@@ -46,6 +46,12 @@ class UserModel extends Store
 			if not user
 				user = settings.security.admins[id] or null
 			user
+	signup: (data, method, context) ->
+		return null unless method is 'POST'
+		data ?= {}
+		wait @insert({_id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
+			console.log 'USER', user
+			user
 	login: (data, method, context) ->
 		return null unless method is 'POST'
 		#console.log 'LOGIN', arguments
@@ -76,7 +82,7 @@ class UserModel extends Store
 						user: user
 					session.expires = new Date(15*24*60*60*1000 + (new Date()).valueOf()) if data.remember
 					context.save session
-					sid: session._id
+					sid: session._id, user: {id: user.id or user._id, email: user.email}
 				else
 					context.save null
 					false
@@ -91,6 +97,8 @@ class SessionModel extends Store
 
 model.Session = new SessionModel
 #model.Session = new Store('Session')
+
+model.Course = require('./store/remote')()
 
 class WebRootPublic
 	find: () ->
@@ -124,6 +132,7 @@ class WebRootPublic
 		#user: user, model: s
 		# JSONP answer for RequireJS
 		'define('+JSON.stringify(user: user, model: s)+');'
+	signup: model.User.signup.bind model.User
 	login: model.User.login.bind model.User
 	false: () ->
 		r = {}
@@ -137,6 +146,7 @@ class WebRootUser extends WebRootPublic
 class WebRootAdmin extends WebRootUser
 	Foo: model.Foo
 	Bar: model.Bar.permissiveFacet ['top2']
+	Course: _.bindAll model.Course, 'find', 'findById'
 
 facets.public = new WebRootPublic()
 facets.user = new WebRootUser()

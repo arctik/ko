@@ -8,9 +8,12 @@ require([
 	window.RQL = RQL;
 	console.log('SESSION', session);
 
-var Bar = [{"user":"root","pass":"124","_id":"4d04fcff6988cd3a27000000"},{"user":"root","pass":"124","_id":"4d04fd006988cd3a27000001"},{"user":"root","pass":"124","_id":"4d04fd016988cd3a27000002"},{"user":"root","pass":"124","_id":"4d04fffe6988cd3a27000003"},{"user":"root","pass":"124","_id":"4d04ffff6988cd3a27000004"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000005"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000006"},{"user":"root","pass":"124","_id":"4d0500096988cd3a27000007"},{"user":"root","pass":"124","_id":"4d05000a6988cd3a27000008"},{"user":"root","pass":"124","_id":"4d05000b6988cd3a27000009"},{"user":"root","pass":"125","_id":"4d05000c6988cd3a2700000a"},{"_id":"4d0505b12583f5c027000000"},{"_id":"4d0505eee03e9dd027000000"},{"_id":"4d0505f1e03e9dd027000001"},{"_id":"4d0505fbe03e9dd027000002"},{"_id":"4d05060c4a8ee7d827000000"},{"_id":"4d05060e4a8ee7d827000001"},{"_id":"4d0506174a8ee7d827000002"},{"_id":"4d05064175feb2e127000000"},{"_id":"4d0506767b51a5e927000000"},{"_id":"4d05069d64f77ff227000000"},{"_id":"4d0506b964f77ff227000001"},{"_id":"4d0507070aa759fd27000000"},{"_id":"4d0507110aa759fd27000001"},{"_id":"4d0507200aa759fd27000002"},{"user":"root","pass":"123","_id":"4d0535e0791554b22b000000"}];
+window.Bar = [{"user":"root","pass":"124","_id":"4d04fcff6988cd3a27000000"},{"user":"root","pass":"124","_id":"4d04fd006988cd3a27000001"},{"user":"root","pass":"124","_id":"4d04fd016988cd3a27000002"},{"user":"root","pass":"124","_id":"4d04fffe6988cd3a27000003"},{"user":"root","pass":"124","_id":"4d04ffff6988cd3a27000004"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000005"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000006"},{"user":"root","pass":"124","_id":"4d0500096988cd3a27000007"},{"user":"root","pass":"124","_id":"4d05000a6988cd3a27000008"},{"user":"root","pass":"124","_id":"4d05000b6988cd3a27000009"},{"user":"root","pass":"125","_id":"4d05000c6988cd3a2700000a"},{"_id":"4d0505b12583f5c027000000"},{"_id":"4d0505eee03e9dd027000000"},{"_id":"4d0505f1e03e9dd027000001"},{"_id":"4d0505fbe03e9dd027000002"},{"_id":"4d05060c4a8ee7d827000000"},{"_id":"4d05060e4a8ee7d827000001"},{"_id":"4d0506174a8ee7d827000002"},{"_id":"4d05064175feb2e127000000"},{"_id":"4d0506767b51a5e927000000"},{"_id":"4d05069d64f77ff227000000"},{"_id":"4d0506b964f77ff227000001"},{"_id":"4d0507070aa759fd27000000"},{"_id":"4d0507110aa759fd27000001"},{"_id":"4d0507200aa759fd27000002"},{"user":"root","pass":"123","_id":"4d0535e0791554b22b000000"}];
 
 model = {
+	//
+	// user authorization
+	//
 	login: function(form){
 		//var action = $(form).attr('action') || location.href;
 		var data = $(form).serializeObject();
@@ -18,8 +21,10 @@ model = {
 			type: 'POST',
 			url: '/login',
 			data: data,
-			success: function(session){
-				location = '';
+			success: function(newSession){
+				//location = '';
+				session = newSession;
+				model.userEmail(session.user.email);
 			},
 			error: function(){
 				alert('Hope you just forgot your credentials... Try once more');
@@ -28,41 +33,60 @@ model = {
 		return false;
 	},
 	logout: function(){
-		$.post('/login', {}, function(){location = '';});
+		$.post('/login', {}, function(){
+			//location = '';
+			model.userEmail(null);
+		});
 		return false;
 	},
-	isLoggedIn: function(){
-		return !!session.user.email;
+	signup: function(form){
+		var data = $(form).serializeObject();
+		$.ajax({
+			type: 'POST',
+			url: '/signup',
+			data: data,
+			success: function(newSession){
+				//location = '';
+				session = newSession;
+				model.userEmail(session.user.email);
+			},
+			error: function(){
+				alert('Sorry... Try once more');
+			}
+		});
+		return false;
 	},
-	user: session.user,
+	// current user email. truthy iff the user is logged in
+	userEmail: ko.observable(session.user.email),
+	//
+	// 4-digit year as string -- to be used in copyright (c) 2010-XXXX
+	//
 	year: (new Date()).toISOString().substring(0, 4),
+	//
+	// global search string
+	//
 	search: ko.observable(null),
+	// perform global search
 	doSearch: function(form){
 		var text = $(form).find('input').val();
 		if (!text) return false;
 		alert('TODO SEARCH FOR ' + text);
 	},
-	//list: ko.observableArray([])
-	/*list1: {
-		props: ['_id', 'user', 'pass'],
-		query: query,
-		items: ko.observableArray(data)
-	},*/
 	query: ko.observable(location.href),
 	entity: {
-		name: ko.observable('Bar'),
-		props: ko.observable(['_id']),
+		name: ko.observable(),
+		props: ko.observable([]),
 		items: ko.observableArray([]),
-		query: ko.observable('')
+		query: ko.observable(),
+		listActions: [
+			{cmd: 'all', title: 'All'},
+			{cmd: 'none', title: 'None'},
+			{cmd: 'toggle', title: 'Toggle'}
+		],
+		listCommand: ko.observable()
 	}
 	/*hash: ko.dependentObservable(function(){
 		return location.href;
-	})*/
-	/*,
-	User1: ko.mapping.fromJS({
-		user: null,
-		pass: null,
-		remember: false
 	})*/
 };
 
@@ -129,6 +153,7 @@ model = {
 		},*/
 		catchAll: function(query){
 			//model.query(query);
+			return false;
 			var props = [];
 			var id = query;
 			var k = query.indexOf('?');
@@ -204,7 +229,10 @@ ko.applyBindings({
 */
 
 		$(document).delegate('a.toggle', 'click', function(){
-			$(this).next().toggle();
+			$(this).next().toggle(0, function(){
+				// autofocus the first input
+				if ($(this).is(':visible')) $(this).find('input:enabled:first').focus();
+			});
 			return false;
 		});
 		$(document).delegate('a.button-close, button[type=reset]', 'click', function(){

@@ -156,6 +156,7 @@ global.CustomError = (message, props) ->
 
 #global.drillDown = require('rql/js-array').evaluateProperty
 global.parseQuery = require('rql/parser').parseGently
+global.filterArray = require('rql/js-array').executeQuery
 
 Object.drillDown = (o, property) ->
 	if property instanceof Array
