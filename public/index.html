@@ -1,0 +1,236 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7 ]> <html lang="en" class="no-js ie6"> <![endif]-->
+<!--[if IE 7 ]>    <html lang="en" class="no-js ie7"> <![endif]-->
+<!--[if IE 8 ]>    <html lang="en" class="no-js ie8"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--> <html lang="en" class="no-js"> <!--<![endif]-->
+<head>
+	<meta charset="utf-8">
+
+	<!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame -->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+	<!-- encoding must be specified within the first 512 bytes www.whatwg.org/specs/web-apps/current-work/multipage/semantics.html#charset -->
+
+	<!-- meta element for compatibility mode needs to be before all elements except title & meta msdn.microsoft.com/en-us/library/cc288325(VS.85).aspx -->
+	<!-- Chrome Frame is only invoked if meta element for compatibility mode is within the first 1K bytes code.google.com/p/chromium/issues/detail?id=23003 -->
+
+	<title></title>
+	<meta name="description" content="">
+	<meta name="author" content="">
+
+	<!--  Mobile viewport optimized: j.mp/bplateviewport -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!-- CSS: implied media="all" -->
+	<link rel="stylesheet" href="css/main.css">
+	<!-- 960 grid -->
+	<link rel="stylesheet" href="css/960.css">
+	<!-- style -->
+	<link rel="stylesheet" href="css/style.css">
+
+	<!-- All JavaScript at the bottom, except for Modernizr which enables HTML5 elements & feature detects -->
+	<script src="js/modernizr-1.6.min.js"></script>
+
+</head>
+
+<body class="container_16 clearfix">
+
+	<header id="header" class="container_16 clearfix" data-bind="template: 'tmpl-header'"></header>
+	<nav id="nav" class="container_16 clearfix" data-bind="template: 'tmpl-navigation', visible: isLoggedIn()"></nav>
+	<div id="content" class="container_16 clearfix">
+		<div data-bind="visible: !isLoggedIn()">
+Lorem ipsum dolor sit amet <br>
+Consectetuer lacinia volutpat vestibulum id <br>
+Vitae nulla penatibus facilisi id <br>
+Nulla Ut consequat at consequat <br>
+Velit euismod Nullam auctor magna <br>
+Sem ipsum porttitor in Curabitur <br>
+Eu consectetuer nunc et Vestibulum <br>
+Pretium Aenean Vivamus lacus tortor <br>
+Quis Sed ipsum arcu metus <br>
+Id orci et Vestibulum tortor <br>
+Ut felis urna eros Curabitur <br>
+Sapien dolor Phasellus lorem Duis <br>
+Pellentesque at pretium lacus ornare <br>
+Cursus est risus hendrerit et <br>
+		</div>
+		<div data-bind="visible: entity.name, template: 'tmpl-list', data: 'entity'">
+		</div>
+	</div>
+	<footer id="footer" class="container_16 clearfix" data-bind="template: 'tmpl-footer'"></footer>
+
+	<!-- Javascript at the bottom for fast page loading -->
+	<script type="text/javascript" data-main="js/main.js" src="js/requireplugins-jquery-1.4.4.js"></script>
+
+	<!--[if lt IE 7 ]>
+		<script> //fix any <img> or .png_bg background-images
+			$.getScript("js/dd_belatedpng.js",function(){ DD_belatedPNG.fix('img, .png_bg'); });
+		</script>
+	<![endif]-->
+
+	<!-- bundled jQuery templates -->
+	<script id="tmpl-notfound" type="text/x-jquery-tmpl">NO TEMPLATE</script>
+
+	<script id="tmpl-header" type="text/x-jquery-tmpl">
+		<div class="grid_12 alpha">&nbsp;</div>
+		<div class="grid_4 omega">
+			<div data-bind="visible: !isLoggedIn()">
+				<a href="#login" class="toggle">Login</a>
+				<form class="modal" action="/login" data-bind="submit: login" style="display: none;">
+					<input type="text" size="10" name="user" placeholder="Username" />
+					<input type="password" size="10" name="pass" placeholder="Password" />
+					<label>Stay signed in<input type="checkbox" name="remember" /></label>
+					<div class="buttons">
+						<button type="submit">Отправить</button>
+						<button type="reset">Отмена</button>
+						<!--a class="button button-close" href="javascript:void(0)">Отмена</a-->
+					</div>
+				</form>
+			</div>
+			<div data-bind="visible: isLoggedIn()">User: <span data-bind="text: user.email"></span>
+				<form class="modal" action="/logout" data-bind="submit: logout" style="display: inline;">
+					<button type="submit">Logout</button>
+				</form>
+			</div>
+		</div>
+	</script>
+
+	<script id="tmpl-footer" type="text/x-jquery-tmpl">
+		<div class="copyright">
+   		&copy; 2010{{if year !== '2010'}}-${year}{{/if}} Your company here
+    </div> 
+	</script>
+
+	<script id="tmpl-navigation" type="text/x-jquery-tmpl">
+		<div class="menu grid_12 alpha">
+   		<a href="#Bar">Bar</a>
+   		[<span data-bind="text: query"></span>]
+    </div>
+		<form data-bind="submit: doSearch"><input class="grid_4 omega" type="search" data-bind="value: search" /></form> 
+	</script>
+
+	<script id="tmpl-list" type="text/x-jquery-tmpl">
+		<div class="grid_16"><span data-bind="text: entity.name"></span></div>
+		<div class="leftMenu grid_3 alpha">Actions</div>
+		<div class="list grid_10">
+			<select class="actions">
+				<option></option>
+				<option value="all">All</option>
+				<option value="none">None</option>
+				<option value="toggle">Toggle</option>
+			</select>
+			<form method="post">
+			<button type="submit" name="action" value="delete">Delete</button>
+			</form>
+			<div>
+				Displaying ?????? items
+			</div>
+		</div>
+		<div class="rightMenu grid_3 omega">Filters</div>
+	</script>
+
+
+
+	<script id="tmpl-login00000000000000" type="text/x-jquery-tmpl">
+		<form class="modal" action="/login">
+			<input type="text" size="10" data-bind="value: user" placeholder="Username" required="true" />
+			<input type="password" size="10" data-bind="value: pass" placeholder="Password" required="true" />
+			<label>Stay signed in<input type="checkbox" data-bind="checked: remember" /></label>
+			{{tmpl "#tmpl-buttons"}}
+		</form>
+	</script>
+	<script id="tmpl-login" type="text/x-jquery-tmpl">
+		<form class="modal" action="/login">
+			<input type="text" size="10" name="user" placeholder="Username" required="true" />
+			<input type="password" size="10" name="pass" placeholder="Password" required="true" />
+			<label>Stay signed in<input type="checkbox" name="remember" /></label>
+			<div class="buttons">
+				<button type="submit">Отправить</button>
+				<button onclick="history.back(); return false;">Отмена</button>
+			</div>
+		</form>
+	</script>
+
+<script id="tmpl-list11111111111111" type="text/x-jquery-tmpl">
+<div class="leftMenu grid_3 alpha">Left Menu</div>
+<div class="list grid_10">
+<select class="actions">
+	<option></option>
+	<option value="all">All</option>
+	<option value="none">None</option>
+	<option value="toggle">Toggle</option>
+</select>
+<form method="post">
+<table>
+	<thead>
+		<tr>
+			<th></th>
+			{{each(j, prop) props}}
+			<th rel="${prop}" class="action-sort {{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
+				${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
+			</th>
+			{{/each}}
+		</tr>
+		<tr>
+			<th></th>
+			{{each(j, prop) props}}
+			<th>
+				<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
+			</th>
+			{{/each}}
+		</tr>
+	</thead>
+	<tbody>
+		{{each(i, item) items()}}
+		<tr rel="${item.id}">
+			<td class="actions"><input type="checkbox" class="action-select" name="ids[]" value="${item.id}" /></td>
+			{{each(j, prop) props}}
+			<td rel="${prop}">
+				{{if prop === 'id'}}
+					<a href="#form:${$data.entity}?id=${item.id}">${item[prop]}</a>
+					<!--a href="#${item.id}">${item[prop]}</a-->
+				{{else}}
+					${item[prop]}
+				{{/if}}
+			</td>
+			{{/each}}
+		</tr>
+		{{/each}}
+	</tbody>
+	<tfoot>
+	</tfoot>
+</table>
+<button type="submit" name="action" value="delete">Delete</button>
+<!--button type="submit" name="action" value="filter">Filter</button-->
+</form>
+<div>
+Displaying ${1+query.limit[1]} to ${query.limit[1]+items().length} items
+</div>
+{{tmpl "#tmpl-listPager"}}
+</div>
+<div class="rightMenu grid_3 omega">Right Menu</div>
+</script>
+
+<script id="tmpl-listPager" type="text/x-jquery-tmpl">
+<div class="pagination">
+<a href="javascript:void(0)" class="page-first">First</a>
+<a href="javascript:void(0)" class="page-prev">Prev</a>
+<a href="javascript:void(0)" class="page-?">?</a>
+<a href="javascript:void(0)" class="page-next">Next</a>
+<a href="javascript:void(0)" class="page-last">Last</a>
+<select class="action-limit">
+	<option value="${query.limit}">${query.limit[0]}</option>
+	<option value="10">10</option>
+	<option value="25">25</option>
+	<option value="50">50</option>
+	<option value="100">100</option>
+	<option value="200">200</option>
+</select>
+</div>
+</script>
+
+
+
+</body>
+</html>
