@@ -212,6 +212,7 @@ model = {
 					if (!props.length) props = ['id'];
 					model.entity.props(props);
 					// update rows
+					// TODO: MAKE OWN MAPPING BASED ON PROPS OF MODEL
 					model.entity.items = ko.mapping.updateFromJS(model.entity.items, data);
 					/*$('.list').tablify({
 						entity: entity,
