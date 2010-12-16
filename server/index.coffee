@@ -223,6 +223,7 @@ handlerFactory = (app, before, after) ->
 					model.find query
 				else if method is 'PUT'
 					model.save data
+				# TODO: parser stucks here!
 				else if method is 'DELETE'
 					model.remove query
 				else if method is 'POST'
@@ -232,14 +233,15 @@ handlerFactory = (app, before, after) ->
 						model[data.method] data.params
 					# copy properties?
 					else if search
-						model.mupdate data, query
+						delete data.id # id is constant!
+						model.mupdate {$set: data}, query
 					# mimic PUT
 					else
 						model.save data
 				else
 					return 405 # ReferenceError?
 			(response) ->
-				console.log "RESPONSE for #{req.url}", arguments
+				#console.log "RESPONSE for #{req.url}", arguments
 				# send the response
 				res.send response
 				# handle post-process

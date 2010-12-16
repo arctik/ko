@@ -4508,7 +4508,15 @@ ko.jqueryTmplTemplateEngine = function () {
     })();
 
     function getTemplateNode(template) {
-        var templateNode = document.getElementById(template);
+        var templateNode;
+        if (template instanceof Array) {
+            for (var i = 0, l = template.length; i < l; i += 1) {
+                templateNode = document.getElementById(template[i]);
+                if (templateNode) return templateNode;
+            }
+        } else {
+            templateNode = document.getElementById(template);
+        }
         if (templateNode == null)
             throw new Error("Cannot find template with ID=" + template);
         return templateNode;
@@ -4590,7 +4598,8 @@ ko.jqueryTmplTemplateEngine.prototype = new ko.templateEngine();
 // Use this one by default
 ko.setTemplateEngine(new ko.jqueryTmplTemplateEngine());
 
-ko.exportSymbol('ko.jqueryTmplTemplateEngine', ko.jqueryTmplTemplateEngine);/*!
+ko.exportSymbol('ko.jqueryTmplTemplateEngine', ko.jqueryTmplTemplateEngine);
+/*!
  * jQuery TextChange Plugin
  * http://www.zurb.com/playground/jquery-text-change-custom-event
  *

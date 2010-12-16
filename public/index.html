@@ -55,8 +55,7 @@ Sapien dolor Phasellus lorem Duis <br>
 Pellentesque at pretium lacus ornare <br>
 Cursus est risus hendrerit et <br>
 		</div>
-		<div data-bind="visible: userEmail(), template: {name: 'tmpl-item', foreach: entity.items()}">
-		</div>
+		<div data-bind="visible: userEmail(), template: {name: 'tmpl-list', data: entity}"></div>
 	</div>
 	<footer id="footer" class="container_16 clearfix" data-bind="template: 'tmpl-footer'"></footer>
 
@@ -123,28 +122,72 @@ Cursus est risus hendrerit et <br>
 		<div class="grid_16"><span data-bind="text: listCommand"></span></div>
 		<div class="leftMenu grid_3 alpha">Actions</div>
 		<div class="list grid_10">
+			ENTITY[[<span data-bind="text: name"></span>]]
+			QUERY[[<span data-bind="text: query"></span>]]
 			<select class="actions" data-bind="value: listCommand, options: listActions, optionsText: 'title', optionsCaption: 'Command'"></select>
-			<form action="/{$entity.name}" data-bind="submit: entity.post">
+			<form action="/{$name}" data-bind="submit: post">
 				<table>
-					<tbody data-bind="template: {name: 'tmpl-item', foreach: entity.items}"></tbody>
+					<thead>
+						<tr>
+							<th></th>
+							{{each(j, prop) props()}}
+							<th rel="${prop}" class="{{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
+								${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
+							</th>
+							{{/each}}
+						</tr>
+						<tr>
+							<th></th>
+							{{each(j, prop) props()}}
+							<th>
+								<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
+							</th>
+							{{/each}}
+						</tr>
+					</thead>
+					<tbody>
+		{{each(i, item) items()}}
+		<tr rel="${item.id}">
+			<td class="actions"><input type="checkbox" class="action-select" name="ids[]" value="${item.id}" /></td>
+			{{each(j, prop) props()}}
+			<td rel="${prop}">
+				{{if prop === 'id'}}
+					<a href="#form:${$data.entity}?id=${item.id}">${item.id}</a>
+				{{else}}
+					${item[prop]}
+				{{/if}}
+			</td>
+			{{/each}}
+		</tr>
+		{{/each}}
+					</tbody>
+					<tfoot></tfoot>
 				</table>
 				<button type="submit" name="action" value="delete">Delete</button>
 			</form>
 			<div>
-				Displaying ?????? items
+				Displaying ${+query+1} to ${+query+1+items().length} items
 			</div>
 		</div>
 		<div class="rightMenu grid_3 omega">Filters</div>
 	</script>
 
-	<script id="tmpl-item" type="text/x-jquery-tmpl">
-		<tr>
-			<td><span data-bind="text: _id"></span></td>
-			<td><span data-bind="text: user"></span></td>
-			<td><span data-bind="text: pass"></span></td>
-		</tr>
+	<script id="tmpl-item1" type="text/x-jquery-tmpl">
+		<tr data-bind="template: {name: 'tmpl-data', foreach: $data}"></tr>
 	</script>
 
+	<script id="tmpl-item" type="text/x-jquery-tmpl">
+		<tr rel="${$data.id}"><td>${console.log($item)}</td></tr>
+	</script>
+
+	<script id="tmpl-prop" type="text/x-jquery-tmpl">
+		<th data-bind="text: $data"></th>
+	</script>
+
+	<script id="tmpl-value" type="text/x-jquery-tmpl">
+					<tbody data-bind="template: {name: 'tmpl-item', foreach: items}"></tbody>
+		<td data-bind="text: $data"></td>
+	</script>
 
 	<script id="tmpl-login00000000000000" type="text/x-jquery-tmpl">
 		<form class="modal" action="/login">

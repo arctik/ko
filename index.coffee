@@ -49,7 +49,7 @@ class UserModel extends Store
 	signup: (data, method, context) ->
 		return null unless method is 'POST'
 		data ?= {}
-		wait @insert({_id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
+		wait @insert({id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
 			console.log 'USER', user
 			user
 	login: (data, method, context) ->
@@ -78,11 +78,11 @@ class UserModel extends Store
 					# log in
 					#console.log 'LOGIN'
 					session =
-						_id: nonce()
+						id: nonce()
 						user: user
 					session.expires = new Date(15*24*60*60*1000 + (new Date()).valueOf()) if data.remember
 					context.save session
-					sid: session._id, user: {id: user.id or user._id, email: user.email}
+					sid: session.id, user: {id: user.id, email: user.email}
 				else
 					context.save null
 					false
@@ -181,7 +181,7 @@ wait waitAllKeys(model), (_facets) ->
 			value: (req, res) ->
 				sid = req.getSecureCookie 'sid'
 				wait model.Session.findById(sid), (session) =>
-					session ?= _id: sid, user: {}
+					session ?= id: sid, user: {}
 					#console.log 'SESSIN!' + sid, session
 					Object.defineProperties session,
 						save:
@@ -190,7 +190,7 @@ wait waitAllKeys(model), (_facets) ->
 								options = {path: '/', httpOnly: true}
 								if not sid and value
 									# user logged in --> store new session and set the cookie
-									sid = value._id
+									sid = value.id
 									options.expires = value.expires if value.expires
 									#console.log 'MAKESESS', value
 									model.Session.insert value
@@ -198,7 +198,7 @@ wait waitAllKeys(model), (_facets) ->
 								else if sid and not value
 									# user logged out --> remove the session and the cookie
 									#console.log 'REMOVESESS'
-									model.Session.remove _id: sid
+									model.Session.remove id: sid
 									res.clearCookie 'sid', options
 						context:
 							get: () ->

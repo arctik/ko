@@ -1,3 +1,5 @@
+'use strict'
+
 Database = require('mongo').Database
 ObjectID = require('mongo').ObjectID
 
@@ -98,46 +100,57 @@ parse = (query) ->
 class Store extends Database
 	constructor: (@collection, options) ->
 		options ?= {}
+		options.hex ?= true
 		super options.name or 'test', options
 		#@options.host.replace /^mongodb:\/\/([^\/]+)/ # TODO
 	insert: (document) ->
 		document ?= {}
+		if document.id
+			document._id = document.id
+			delete document.id
 		deferred = defer()
 		#console.log 'INSERT?', document
 		super @collection, document, (err, result) =>
 			#console.log 'INSERT!', arguments
 			return deferred.reject err if err
+			result.id = result._id
+			delete result._id
 			@emit 'insert', result
 			deferred.resolve result
 		deferred.promise
 	update: (document) ->
 		document ?= {}
+		if document.id
+			document._id = document.id
+			delete document.id
 		deferred = defer()
 		#console.log 'UPDATE?', document
-		super @collection, {_id: document._id}, document, (err, result) =>
+		Store.__super__.modify.call @, @collection, query: {_id: document._id}, update: document, new: true, (err, result) =>
 			#console.log 'UPDATE!', arguments
-			return deferred.reject err if err
+			return deferred.reject null if err
+			result.id = result._id
+			delete result._id
 			@emit 'update', result
 			deferred.resolve result
 		deferred.promise
 	save: (document) ->
 		document ?= {}
-		if not document._id
+		if not document.id
 			# TODO: fill with defaults first?
 			@insert document
 		else
-			@update {_id: document._id}, document
+			@update document
 	mupdate: (changes, query) ->
 		changes ?= {}
-		delete changes._id # id is constant
 		@validateOnPut changes, true
 		query = parse(query).search
 		query.$atomic = 1
 		deferred = defer()
+		#console.log 'MUPDATE?!', query, changes
 		# FIXME: how to $unset?!
-		super @collection, query, {$set: changes}, (err, result) =>
+		Store.__super__.update.call @, @collection, query, changes, (err, result) =>
 			return deferred.reject err if err
-			@emit 'update', result
+			@emit 'mupdate', result
 			deferred.resolve result
 		deferred.promise
 	remove: (query) ->
@@ -162,13 +175,17 @@ class Store extends Database
 		super @collection, query.search, query.meta, (err, result) =>
 			#console.log 'FOUND', arguments
 			return deferred.reject err if err
-			result = result[0] or null if query.terms.pk
+			result.forEach (doc) ->
+				doc.id = doc._id
+				delete doc._id
+			if query.terms.pk
+				result = result[0] or null
 			#@emit 'find', result
 			deferred.resolve result
 		deferred.promise
 	findById: (id) ->
 		return null unless id
-		@find "_id=#{id}" #{_id: id}
+		@find "id=#{id}"
 	stream: (query) ->
 		query = parse query
 		# limit the limit

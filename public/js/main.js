@@ -8,7 +8,7 @@ require([
 	window.RQL = RQL;
 	console.log('SESSION', session);
 
-window.Bar = [{"user":"root","pass":"124","_id":"4d04fcff6988cd3a27000000"},{"user":"root","pass":"124","_id":"4d04fd006988cd3a27000001"},{"user":"root","pass":"124","_id":"4d04fd016988cd3a27000002"},{"user":"root","pass":"124","_id":"4d04fffe6988cd3a27000003"},{"user":"root","pass":"124","_id":"4d04ffff6988cd3a27000004"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000005"},{"user":"root","pass":"124","_id":"4d0500006988cd3a27000006"},{"user":"root","pass":"124","_id":"4d0500096988cd3a27000007"},{"user":"root","pass":"124","_id":"4d05000a6988cd3a27000008"},{"user":"root","pass":"124","_id":"4d05000b6988cd3a27000009"},{"user":"root","pass":"125","_id":"4d05000c6988cd3a2700000a"},{"_id":"4d0505b12583f5c027000000"},{"_id":"4d0505eee03e9dd027000000"},{"_id":"4d0505f1e03e9dd027000001"},{"_id":"4d0505fbe03e9dd027000002"},{"_id":"4d05060c4a8ee7d827000000"},{"_id":"4d05060e4a8ee7d827000001"},{"_id":"4d0506174a8ee7d827000002"},{"_id":"4d05064175feb2e127000000"},{"_id":"4d0506767b51a5e927000000"},{"_id":"4d05069d64f77ff227000000"},{"_id":"4d0506b964f77ff227000001"},{"_id":"4d0507070aa759fd27000000"},{"_id":"4d0507110aa759fd27000001"},{"_id":"4d0507200aa759fd27000002"},{"user":"root","pass":"123","_id":"4d0535e0791554b22b000000"}];
+window.Bar = [{"user":"root","pass":"124","id":"4d04fcff6988cd3a27000000"},{"user":"root","pass":"124","id":"4d04fd006988cd3a27000001"},{"user":"root","pass":"124","id":"4d04fd016988cd3a27000002"},{"user":"root","pass":"124","id":"4d04fffe6988cd3a27000003"},{"user":"root","pass":"124","id":"4d04ffff6988cd3a27000004"},{"user":"root","pass":"124","id":"4d0500006988cd3a27000005"},{"user":"root","pass":"124","id":"4d0500006988cd3a27000006"},{"user":"root","pass":"124","id":"4d0500096988cd3a27000007"},{"user":"root","pass":"124","id":"4d05000a6988cd3a27000008"},{"user":"root","pass":"124","id":"4d05000b6988cd3a27000009"},{"user":"root","pass":"125","id":"4d05000c6988cd3a2700000a"},{"id":"4d0505b12583f5c027000000"},{"id":"4d0505eee03e9dd027000000"},{"id":"4d0505f1e03e9dd027000001"},{"id":"4d0505fbe03e9dd027000002"},{"id":"4d05060c4a8ee7d827000000"},{"id":"4d05060e4a8ee7d827000001"},{"id":"4d0506174a8ee7d827000002"},{"id":"4d05064175feb2e127000000"},{"id":"4d0506767b51a5e927000000"},{"id":"4d05069d64f77ff227000000"},{"id":"4d0506b964f77ff227000001"},{"id":"4d0507070aa759fd27000000"},{"id":"4d0507110aa759fd27000001"},{"id":"4d0507200aa759fd27000002"},{"user":"root","pass":"123","id":"4d0535e0791554b22b000000"}];
 
 model = {
 	//
@@ -76,14 +76,17 @@ model = {
 	entity: {
 		name: ko.observable(),
 		props: ko.observable([]),
-		items: ko.observableArray([]),
-		query: ko.observable(),
+		items: ko.mapping.fromJS([]),
+		query: RQL.Query().normalize(),
 		listActions: [
 			{cmd: 'all', title: 'All'},
 			{cmd: 'none', title: 'None'},
 			{cmd: 'toggle', title: 'Toggle'}
 		],
-		listCommand: ko.observable()
+		listCommand: ko.observable(),
+		post: function(){
+			console.log('POSTENTITY', arguments);
+		}
 	}
 	/*hash: ko.dependentObservable(function(){
 		return location.href;
@@ -126,7 +129,7 @@ model = {
 				dataType: 'json',
 				success: callback = function(data){
 					model.entity.name(entity);
-					model.entity.props(_.keys(data[0] || {}) || ['_id']);
+					model.entity.props(_.keys(data[0] || {}) || ['id']);
 					model.entity.items = ko.mapping.fromJS(data);
 					model.entity.query(query);
 					/*$('#content').html('<div data-bind="template: \'tmpl-list\', data: \'entity\'"></div>');
@@ -146,13 +149,45 @@ model = {
 			console.log('INSTANCE', this, arguments);
 			$('#content').html('<div data-bind="template: \'tmpl-list\'"></div>');
 			ko.applyBindings({
-				props: ['_id', 'user', 'pass'],
+				props: ['id', 'user', 'pass'],
 				query: ko.observable(query),
 				items: ko.observableArray(Bar)
 			}, $('#content')[0]);
 		},*/
 		catchAll: function(query){
-			//model.query(query);
+			var callback;
+			var url = query.replace(/^#*/, '');
+			var parts = query.split('?');
+			var qs = parts[1];
+			parts = _.filter(parts[0].split('/'), function(x){return !!x;}); // _.???
+			$.ajax({
+				url: url,
+				dataType: 'json',
+				success: callback = function(data){
+					// set entity name
+					model.entity.name(parts[0]);
+					// update sorter, filters and pager
+					var parsed = RQL.parse(qs).normalize({hardLimit: 20});
+					console.log('PARSED', parsed);
+					model.entity.query = parsed;
+					// update columns
+					var props = _.keys(parsed.selectObj || {});
+					if (!props.length) props = ['id'];
+					model.entity.props(props);
+					// update rows
+					model.entity.items = ko.mapping.updateFromJS(model.entity.items, data);
+					/*$('.list').tablify({
+						entity: entity,
+						query: query,
+						data: data // raw data?!
+					});*/
+				},
+				error: function(){
+					callback([]);
+				}
+			});
+
+
 			return false;
 			var props = [];
 			var id = query;
@@ -204,7 +239,7 @@ model = {
 
 
 /*
-var text = '_id=123&user=456&pass=789&sort(pass,-user)&limit(10,3)';
+var text = 'id=123&user=456&pass=789&sort(pass,-user)&limit(10,3)';
 window.query = norm(RQL.parse(text).normalize());
 function norm(q){
 	q.sort = q.sortObj; delete q.sortObj; delete q.sortArr;
@@ -242,3 +277,19 @@ ko.applyBindings({
 
 	});
 });
+
+function norm(q){
+	q.sort = q.sortObj; delete q.sortObj; delete q.sortArr;
+	delete q.search; delete q.needCount;
+	q.select = q.selectObj; delete q.selectObj; delete q.selectArr;
+	q.skip = q.limit[1];
+	q.limit = q.limit[0];
+	for (var i in q.last) {
+		if (q.last[i].name === 'eq') {
+			q.last[i] = String(q.last[i].args[1]);
+		} else {
+			delete q.last[i];
+		}
+	}
+	return q;
+}
