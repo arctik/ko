@@ -125,58 +125,84 @@ Cursus est risus hendrerit et <br>
 			ENTITY[[<span data-bind="text: name"></span>]]
 			QUERY[[<span data-bind="text: query"></span>]]
 			<select class="actions" data-bind="value: listCommand, options: listActions, optionsText: 'title', optionsCaption: 'Command'"></select>
-			<form action="/{$name}" data-bind="submit: post">
-				<table>
+			<form action="/${name}" data-bind="submit: post">
+				<table id="list-${name}">
 					<thead>
-						<tr>
-							<th></th>
-							{{each(j, prop) props()}}
-							<th rel="${prop}" class="{{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
-								${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
-							</th>
-							{{/each}}
-						</tr>
-						<tr>
-							<th></th>
-							{{each(j, prop) props()}}
-							<th>
-								<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
-							</th>
-							{{/each}}
-						</tr>
+						<tr data-bind="template: {name: ['tmpl-'+name()+'-columns', 'tmpl-columns']}"></tr>
+						<tr data-bind="template: {name: ['tmpl-'+name()+'-filters', 'tmpl-filters']}"></tr>
 					</thead>
-					<tbody>
-		{{each(i, item) items()}}
-		<tr rel="${item.id}">
-			<td class="actions"><input type="checkbox" class="action-select" name="ids[]" value="${item.id}" /></td>
-			{{each(j, prop) props()}}
-			<td rel="${prop}">
-				{{if prop === 'id'}}
-					<a href="#form:${$data.entity}?id=${item.id}">${item.id}</a>
-				{{else}}
-					${item[prop]}
-				{{/if}}
-			</td>
-			{{/each}}
-		</tr>
-		{{/each}}
-					</tbody>
+					<tbody data-bind="template: {name: ['tmpl-'+name()+'-item', 'tmpl-item'], foreach: items}"></tbody>
 					<tfoot></tfoot>
 				</table>
-				<button type="submit" name="action" value="delete">Delete</button>
+				<button data-bind="click: removeSelected">Delete</button>
+				<button data-bind="click: addNew">Add new</button>
 			</form>
 			<div>
-				Displaying ${+query+1} to ${+query+1+items().length} items
+				Displaying ${+query.limit[1]+1} to ${+query.limit[1]+1+items().length} items
 			</div>
 		</div>
 		<div class="rightMenu grid_3 omega">Filters</div>
+	</script>
+
+	<script id="tmpl-columns000" type="text/x-jquery-tmpl">
+		<th></th>
+		{{each props()}}<th>${$data}</th>{{/each}}
+	</script>
+
+	<script id="tmpl-columns" type="text/x-jquery-tmpl">
+		<th></th>
+		{{each(j, prop) props()}}
+		<th rel="${prop}" class="{{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
+			${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
+		</th>
+		{{/each}}
+	</script>
+
+	<script id="tmpl-filters" type="text/x-jquery-tmpl">
+		<th></th>
+		{{each(j, prop) props()}}
+		<th>
+			<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
+		</th>
+		{{/each}}
+	</script>
+
+	<script id="tmpl-Bar-columns" type="text/x-jquery-tmpl">
+		<th></th>
+		<th>Логин</th>
+		<th>Пароль</th>
+		<th>Почта</th>
+	</script>
+
+	<script id="tmpl-Bar-item" type="text/x-jquery-tmpl">
+		<tr rel="${id}">
+			<td class="actions"><input type="checkbox" class="action-select" /></td>
+			<td data-bind="text: user"></td>
+			<td data-bind="text: pass"></td>
+			<td data-bind="text: email"></td>
+			<td data-bind="text: Date.now()"></td>
+		</tr>
+	</script>
+
+	<script id="tmpl-Course-columns" type="text/x-jquery-tmpl">
+		<th></th>
+		<th>Валюта</th>
+		<th>Курс</th>
+	</script>
+
+	<script id="tmpl-Course-item" type="text/x-jquery-tmpl">
+		<tr>
+			<td class="actions"><input type="checkbox" class="action-select" /></td>
+			<td data-bind="text: id"></td>
+			<td data-bind="text: value"></td>
+		</tr>
 	</script>
 
 	<script id="tmpl-item1" type="text/x-jquery-tmpl">
 		<tr data-bind="template: {name: 'tmpl-data', foreach: $data}"></tr>
 	</script>
 
-	<script id="tmpl-item" type="text/x-jquery-tmpl">
+	<script id="tmpl-item2" type="text/x-jquery-tmpl">
 		<tr rel="${$data.id}"><td>${console.log($item)}</td></tr>
 	</script>
 
@@ -189,14 +215,6 @@ Cursus est risus hendrerit et <br>
 		<td data-bind="text: $data"></td>
 	</script>
 
-	<script id="tmpl-login00000000000000" type="text/x-jquery-tmpl">
-		<form class="modal" action="/login">
-			<input type="text" size="10" data-bind="value: user" placeholder="Username" required="true" />
-			<input type="password" size="10" data-bind="value: pass" placeholder="Password" required="true" />
-			<label>Stay signed in<input type="checkbox" data-bind="checked: remember" /></label>
-			{{tmpl "#tmpl-buttons"}}
-		</form>
-	</script>
 	<script id="tmpl-login" type="text/x-jquery-tmpl">
 		<form class="modal" action="/login">
 			<input type="text" size="10" name="user" placeholder="Username" required="true" />

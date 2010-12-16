@@ -8,7 +8,7 @@ require([
 	window.RQL = RQL;
 	console.log('SESSION', session);
 
-window.Bar = [{"user":"root","pass":"124","id":"4d04fcff6988cd3a27000000"},{"user":"root","pass":"124","id":"4d04fd006988cd3a27000001"},{"user":"root","pass":"124","id":"4d04fd016988cd3a27000002"},{"user":"root","pass":"124","id":"4d04fffe6988cd3a27000003"},{"user":"root","pass":"124","id":"4d04ffff6988cd3a27000004"},{"user":"root","pass":"124","id":"4d0500006988cd3a27000005"},{"user":"root","pass":"124","id":"4d0500006988cd3a27000006"},{"user":"root","pass":"124","id":"4d0500096988cd3a27000007"},{"user":"root","pass":"124","id":"4d05000a6988cd3a27000008"},{"user":"root","pass":"124","id":"4d05000b6988cd3a27000009"},{"user":"root","pass":"125","id":"4d05000c6988cd3a2700000a"},{"id":"4d0505b12583f5c027000000"},{"id":"4d0505eee03e9dd027000000"},{"id":"4d0505f1e03e9dd027000001"},{"id":"4d0505fbe03e9dd027000002"},{"id":"4d05060c4a8ee7d827000000"},{"id":"4d05060e4a8ee7d827000001"},{"id":"4d0506174a8ee7d827000002"},{"id":"4d05064175feb2e127000000"},{"id":"4d0506767b51a5e927000000"},{"id":"4d05069d64f77ff227000000"},{"id":"4d0506b964f77ff227000001"},{"id":"4d0507070aa759fd27000000"},{"id":"4d0507110aa759fd27000001"},{"id":"4d0507200aa759fd27000002"},{"user":"root","pass":"123","id":"4d0535e0791554b22b000000"}];
+window.controller = null;
 
 model = {
 	//
@@ -86,6 +86,43 @@ model = {
 		listCommand: ko.observable(),
 		post: function(){
 			console.log('POSTENTITY', arguments);
+		},
+		removeSelected: function(){
+			// get ids from selected rows
+			var ids = []; $('#list-'+this.name()).find('tr.selected').each(function(i, row){ids.push($(row).attr('rel'))});
+			console.log('REMOVE', ids, this.name());
+			// issue POST to /<Entity> with body set to array of ids
+			$.ajax({
+				type: 'POST',
+				url: '/'+this.name()+'?in(id,$1)',
+				data: JSON.stringify({queryParameters: [ids]}),
+				contentType: 'application/json',
+				beforeSend: function(xhr){
+					xhr.setRequestHeader('x-method', 'DELETE');
+				},
+				success: function(session){
+					console.log('POSTANSWER', arguments);
+					controller.catchAll(Backbone.history.fragment);
+				},
+				error: function(){
+					console.log('BUMP', arguments);
+				}
+			});
+		},
+		addNew: function(){
+			// issue POST to /<Entity> to create blank record
+			$.ajax({
+				type: 'POST',
+				url: '/'+this.name(),
+				contentType: 'application/json',
+				success: function(session){
+					console.log('POSTANSWER', arguments);
+					controller.catchAll(Backbone.history.fragment);
+				},
+				error: function(){
+					console.log('BUMP', arguments);
+				}
+			});
 		}
 	}
 	/*hash: ko.dependentObservable(function(){
@@ -227,7 +264,7 @@ model = {
 		}, 2000);
 */
 		// let the history begin
-		var controller = new Controller();
+		controller = new Controller();
 			//console.log('INIT', Object.keys(this.routes));
 			//controller.route(/^(.*?)\/^([^?]*?)(\?(.*?))?$/, 'viewInstance1', function(){
 			//	console.log('INSTANCE', this, arguments);
@@ -263,6 +300,7 @@ ko.applyBindings({
 }, $('#content')[0]);
 */
 
+		// a.toggle toggles the next element visibility
 		$(document).delegate('a.toggle', 'click', function(){
 			$(this).next().toggle(0, function(){
 				// autofocus the first input
@@ -270,10 +308,34 @@ ko.applyBindings({
 			});
 			return false;
 		});
+		// a.button-close hides parent form
 		$(document).delegate('a.button-close, button[type=reset]', 'click', function(){
 			$(this).parents('form').hide();
 			return false;
 		});
+		// gmail-style selection, shift-click selects the sequence
+		$(document)
+		.delegate('.action-select:enabled', 'click', function(e){
+			var parent = $(this).parents('table:first');
+			var all = parent.find('.action-select:enabled');
+			var first = all.index(this);
+			if (e.shiftKey) {
+				var last = +parent.attr('data-lastclicked'); if (isNaN(last)) last = 0;
+				var start = Math.min(first, last);
+				var end = Math.max(first, last);
+				//console.log('SHI', start, end, all.slice(start, end+1));
+				var fn = $(this).attr('checked');
+				all.slice(start, end+1).attr('checked', fn).change();
+			}
+			parent.attr('data-lastclicked', first);
+		})
+		// mark row containing checked checkbox as selected
+		.delegate('.action-select:enabled', 'change', function(e){
+			e.preventDefault();
+			var fn = $(this).attr('checked');
+			$(this).parents('tr:first').toggleClass('selected', fn);
+		});
+
 
 	});
 });

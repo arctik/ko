@@ -157,7 +157,7 @@ class Store extends Database
 		query = parse query
 		deferred = defer()
 		# fuser
-		#console.log 'REM', query
+		console.log 'REM', query
 		throw TypeError() unless Object.keys(query.search).length
 		super @collection, query.search, (err, result) =>
 			return deferred.reject err if err

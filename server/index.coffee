@@ -190,7 +190,7 @@ handlerFactory = (app, before, after) ->
 				# get session
 				app.getSession req, res
 			(session) ->
-				#console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params, context
+				#console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
 				# run REST handler
 				method = req.method
 				path = req.location.pathname
