@@ -17,6 +17,9 @@ SteveSanderson/knockout.mapping/build/output/knockout.mapping-latest.debug.js:kn
 dvv/rql/lib:rql
 dvv/node-formidable/lib/formidable:formidable
 maqr/node-xml2js/lib:xml2js
+astro/node-expat/build/default/node-expat.node:node-expat.node
+Poetro/node-xml2js-expat/lib/xml2js.js:xml2js.js
+tautologistics/node-htmlparser/lib/htmlparser.js:htmlparser.js
 isaacs/sax-js/lib/sax.js:sax.js
 dvv/coffee-mongo/lib:mongo
 mranney/node_redis:redis

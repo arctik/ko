@@ -158,39 +158,6 @@ model = {
 				return false;
 			});
 		},
-		viewEntity: function(entity, query){
-			console.log('ENTITY', this, arguments);
-			var callback;
-			$.ajax({
-				url: entity + '?' + query,
-				dataType: 'json',
-				success: callback = function(data){
-					model.entity.name(entity);
-					model.entity.props(_.keys(data[0] || {}) || ['id']);
-					model.entity.items = ko.mapping.fromJS(data);
-					model.entity.query(query);
-					/*$('#content').html('<div data-bind="template: \'tmpl-list\', data: \'entity\'"></div>');
-					ko.applyBindings(model, $('#content')[0]);
-					$('.list').tablify({
-						entity: entity,
-						query: query,
-						data: data // raw data?!
-					});*/
-				},
-				error: function(){
-					callback([]);
-				}
-			});
-		},
-		/*viewInstance: function(entity, id, query){
-			console.log('INSTANCE', this, arguments);
-			$('#content').html('<div data-bind="template: \'tmpl-list\'"></div>');
-			ko.applyBindings({
-				props: ['id', 'user', 'pass'],
-				query: ko.observable(query),
-				items: ko.observableArray(Bar)
-			}, $('#content')[0]);
-		},*/
 		catchAll: function(query){
 			var callback;
 			var url = query.replace(/^#*/, '');
@@ -201,10 +168,8 @@ model = {
 				url: url,
 				dataType: 'json',
 				success: callback = function(data){
-					// set entity name
-					model.entity.name(parts[0]);
 					// update sorter, filters and pager
-					var parsed = RQL.parse(qs).normalize({hardLimit: 20});
+					var parsed = RQL.parse(qs).normalize();
 					console.log('PARSED', parsed);
 					model.entity.query = parsed;
 					// update columns
@@ -213,36 +178,25 @@ model = {
 					model.entity.props(props);
 					// update rows
 					// TODO: MAKE OWN MAPPING BASED ON PROPS OF MODEL
-					model.entity.items = ko.mapping.updateFromJS(model.entity.items, data);
-					/*$('.list').tablify({
-						entity: entity,
-						query: query,
-						data: data // raw data?!
-					});*/
+					if (parts[0] === model.entity.name()) {
+						console.log('UPDATINGITEMS', data);
+						ko.mapping.updateFromJS(model.entity.items, data);
+					} else {
+						console.log('LOADINGITEMS', data);
+						model.entity.items = ko.mapping.fromJS(data);
+						// set entity name
+						model.entity.name(parts[0]);
+						/*$('.list').tablify({
+							entity: entity,
+							query: query,
+							data: data // raw data?!
+						});*/
+					}
 				},
 				error: function(){
 					callback([]);
 				}
 			});
-
-
-			return false;
-			var props = [];
-			var id = query;
-			var k = query.indexOf('?');
-			if (k >= 0) {
-				id = query.substring(0, k);
-				query = RQL.parse(query.substring(k+1)).normalize({hardLimit: 100, clear: props});
-			} else {
-				query = RQL.Query().normalize({hardLimit: 100, clear: props});
-			}
-			id = id.split('/').filter(function(x){return !!x;});
-			var entity = id.shift();
-			if (id.length > 0) {
-				query.pk = id.shift();
-			}
-			//console.log('QUERY', id, query);
-			if (query.pk) this.viewInstance(entity, id, query); else this.viewEntity(entity, query);
 		}
 	});
 
@@ -330,12 +284,41 @@ ko.applyBindings({
 			}
 			parent.attr('data-lastclicked', first);
 		})
-		// mark row containing checked checkbox as selected
+		// mark table rows containing checked checkboxes as selected
 		.delegate('.action-select:enabled', 'change', function(e){
 			e.preventDefault();
 			var fn = $(this).attr('checked');
 			$(this).parents('tr:first').toggleClass('selected', fn);
+		})
+		// handle multi-sort
+		.delegate('.action-sort[rel]', 'click', function(e){
+			e.preventDefault();
+			var parent = $(this).parents('table:first');
+			var prop = $(this).attr('rel');
+			var sort = JSON.parse(parent.attr('data-sort'));
+			var obj = RQL.exec('name='+prop,{},sort);
+			var state = obj.dir;
+			var multi = sort.length > 1;
+			// TODO: switch off a column if multi
+			if (!state) {
+				if (!e.shiftKey) sort = [];
+				sort.push({name: prop, dir: 1});
+			} else {
+				var p = state > 0 ? '-'+prop : prop;
+				if (!e.shiftKey) {
+					sort = [multi ? prop : p];
+				} else {
+					var i = _.keys(options.query.sortObj).indexOf(prop);
+					sort[i] = p;
+				}
+			}
+			// re-sort
+			parent.attr('data-sort', JSON.stringify(sort));
+			//options.query.sort = sortOrder;
+			//reload();
+			return false;
 		});
+
 
 
 	});

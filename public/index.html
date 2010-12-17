@@ -169,9 +169,9 @@ Cursus est risus hendrerit et <br>
 
 	<script id="tmpl-Bar-columns" type="text/x-jquery-tmpl">
 		<th></th>
-		<th>Логин</th>
-		<th>Пароль</th>
-		<th>Почта</th>
+		<th rel="user">Логин</th>
+		<th rel="pass">Пароль</th>
+		<th rel="email">Почта</th>
 	</script>
 
 	<script id="tmpl-Bar-item" type="text/x-jquery-tmpl">
@@ -185,14 +185,17 @@ Cursus est risus hendrerit et <br>
 	</script>
 
 	<script id="tmpl-Course-columns" type="text/x-jquery-tmpl">
+		<th rel="id">Валюта</th>
+		<th rel="value">Курс</th>
+	</script>
+
+	<script id="tmpl-Course-filters" type="text/x-jquery-tmpl">
+		<th><input type="search" name="id" class="search"{{if query.last.id}} value="${query.last.id.args[1]}"{{/if}} /></th>
 		<th></th>
-		<th>Валюта</th>
-		<th>Курс</th>
 	</script>
 
 	<script id="tmpl-Course-item" type="text/x-jquery-tmpl">
 		<tr>
-			<td class="actions"><input type="checkbox" class="action-select" /></td>
 			<td data-bind="text: id"></td>
 			<td data-bind="text: value"></td>
 		</tr>
