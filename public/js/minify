@@ -5,6 +5,19 @@ cat \
 	../../lib/node/underscore.js \
 	../../lib/node/backbone.js \
 	../../lib/node/jquery.tmpl.js \
+	jquery.textchange.min.js \
+	formdeserialize.js \
+	\
+ > bundle.js
+#| build/jsmin > bundle.js
+
+exit 0
+
+cat \
+	../../lib/node/json2.js \
+	../../lib/node/underscore.js \
+	../../lib/node/backbone.js \
+	../../lib/node/jquery.tmpl.js \
 	../../lib/node/knockout.js \
 	jquery.textchange.min.js \
 	../../lib/node/knockout.mapping.js \

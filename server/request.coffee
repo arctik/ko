@@ -26,6 +26,10 @@ http.IncomingMessage::parse = () ->
 		@socket.remoteAddress = @headers['x-forwarded-for']
 		delete @headers['x-forwarded-for']
 
+	# honor X-HTTP-Method-Override
+	if @headers['x-http-method-override']
+		@method = @headers['x-http-method-override'].toUpperCase()
+
 	# parse URL parameters
 	@params = @location.query or {}
 
@@ -51,8 +55,8 @@ http.IncomingMessage::parse = () ->
 			# remove http-* params
 			delete @params[k]
 
-	# honor X-Method
-	@method = @headers['x-method'].toUpperCase() if @headers['x-method']
+	##### honor X-Method
+	####@method = @headers['x-method'].toUpperCase() if @headers['x-method']
 
 	this
 
@@ -77,6 +81,10 @@ http.IncomingMessage::parseBody = () ->
 	form.on 'error', (err) ->
 		deferred.reject err
 	form.on 'end', () ->
+		# Backbone.emulateJSON compat:
+		# if 'application/x-www-form-urlencoded' --> reparse 'model' key to be the final params
+		if self.headers['content-type'] is 'application/x-www-form-urlencoded'
+			self.params = JSON.parse self.params.model
 		deferred.resolve self
 	form.parse self
 	deferred.promise

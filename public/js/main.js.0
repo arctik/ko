@@ -7,61 +7,23 @@ require([
 	window.RQL = RQL;
 	console.log('SESSION', session);
 
-_.mixin({
-	partial: function(ids, data){
-		if (!_.isArray(ids)) {
-			ids = [ids, 'notfound'];
-		}
-		var text = null;
-		_.each(ids, function(id){
-			console.log('PART', id);
-			var t = $('#tmpl-'+id);
-			if (t && !text) {
-				text = t.text();
-			}
-		});
-		return text ? _.template(text, data) : '';
-	}
-});
+window.controller = null;
 
-window.Model = Backbone.Model.extend({
-});
-
-window.model = new window.Model;
-window.model.bind('change', function(){
-	console.log('MODELCHANGE', this, arguments);
-});
-
-var HeaderApp = Backbone.View.extend({
-	model: window.model,
-	el: $('#header'),
-	template: _.partial('header'),
-	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
-	},
-	events: {
-		'submit #login': 'login',
-		'submit #logout': 'logout',
-		'submit #signup': 'signup'
-	},
-	initialize: function(){
-		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
-	},
+model = {
 	//
 	// user authorization
 	//
-	login: function(e){
+	login: function(form){
 		//var action = $(form).attr('action') || location.href;
-		var view = this;
-		var data = $(e.target).serializeObject();
+		var data = $(form).serializeObject();
 		$.ajax({
 			type: 'POST',
 			url: '/login',
-			data: JSON.stringify(data),
-			contentType: 'application/json',
+			data: data,
 			success: function(newSession){
-				view.model.set(newSession);
+				//location = '';
+				session = newSession;
+				model.userEmail(session.user.email);
 			},
 			error: function(){
 				alert('Hope you just forgot your credentials... Try once more');
@@ -69,113 +31,47 @@ var HeaderApp = Backbone.View.extend({
 		});
 		return false;
 	},
-	logout: function(e){
-		var view = this;
-		$.ajax({
-			type: 'POST',
-			url: '/login',
-			data: JSON.stringify({}),
-			contentType: 'application/json',
-			success: function(newSession){
-				view.model.set(newSession);
-			},
-			error: function(){
-				alert('Could not log off... Try once more');
-			}
+	logout: function(){
+		$.post('/login', {}, function(){
+			//location = '';
+			model.userEmail(null);
 		});
 		return false;
 	},
-	signup: function(e){
-		var view = this;
-		var data = $(e.target).serializeObject();
+	signup: function(form){
+		var data = $(form).serializeObject();
 		$.ajax({
 			type: 'POST',
 			url: '/signup',
-			data: JSON.stringify(data),
-			contentType: 'application/json',
+			data: data,
 			success: function(newSession){
-				view.model.set(newSession);
+				//location = '';
+				session = newSession;
+				model.userEmail(session.user.email);
 			},
 			error: function(){
 				alert('Sorry... Try once more');
 			}
 		});
 		return false;
-	}
-});
-
-var FooterApp = Backbone.View.extend({
-	model: window.model,
-	el: $('#footer'),
-	//template: _.template($('#footer').text()),
-	template: _.partial('footer'),
-	render: function(){
-		this.el.html(this.template({
-			//
-			// 4-digit year as string -- to be used in copyright (c) 2010-XXXX
-			//
-			year: (new Date()).toISOString().substring(0, 4),
-		}));
 	},
-	initialize: function(){
-		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
-	}
-});
-
-var NavApp = Backbone.View.extend({
-	model: window.model,
-	el: $('#nav'),
-	template: _.partial('navigation'),
-	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
-	},
-	events: {
-		'submit form': 'doSearch'
-	},
-	initialize: function(){
-		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
-	},
-	doSearch: function(e){
-		var text = $(e.target).find('input').val();
+	// current user email. truthy iff the user is logged in
+	userEmail: ko.observable(session.user.email),
+	//
+	// 4-digit year as string -- to be used in copyright (c) 2010-XXXX
+	//
+	year: (new Date()).toISOString().substring(0, 4),
+	//
+	// global search string
+	//
+	search: ko.observable(null),
+	// perform global search
+	doSearch: function(form){
+		var text = $(form).find('input').val();
 		if (!text) return false;
 		alert('TODO SEARCH FOR ' + text);
-		return false;
-	}
-});
-
-var Entity = Backbone.Collection.extend({
-});
-
-var App = Backbone.View.extend({
-	model: window.model,
-	el: $('#content'),
-	template: _.partial('content'),
-	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
 	},
-	initialize: function(){
-		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
-	}
-});
-
-var EntityView = Backbone.View.extend({
-	model: window.model,
-	el: $('#list'),
-	template: _.partial('list'),
-	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
-	},
-	initialize: function(){
-		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
-	}
-});
-
-/*
-model = {
+	query: ko.observable(location.href),
 	entity: {
 		name: ko.observable(),
 		props: ko.observable([]),
@@ -228,16 +124,38 @@ model = {
 			});
 		}
 	}
+	/*hash: ko.dependentObservable(function(){
+		return location.href;
+	})*/
 };
-*/
 
 	var Controller = Backbone.Controller.extend({
 		routes: {
-			'contact': 'contactUs',
 			'*query': 'catchAll'
+			//':entity/:id': 'viewInstance',
+			//':entity': 'viewEntity'
 		},
-		contactUs: function(){
-			console.log('CONTACTUS');
+		form: function(){
+			//$('#content').html('<div data-bind="template: \'tmpl-login\'"></div>');
+			//ko.applyBindings(model.User, $('#content >div')[0]);
+			$('#content').html($('#tmpl-login').tmpl()).delegate('form', 'submit', function(){
+				var action = $(this).attr('action') || location.href;
+				var data = $(this).serializeObject();
+				//var data = ko.mapping.toJS(model.User);
+				//console.log('SUBMIT', data);
+				$.ajax({
+					type: 'POST',
+					url: action,
+					data: data,
+					success: function(session){
+						console.log('POSTANSWER', arguments);
+					},
+					error: function(){
+						console.log('BUMP', arguments);
+					}
+				});
+				return false;
+			});
 		},
 		catchAll: function(query){
 			var callback;
@@ -252,10 +170,7 @@ model = {
 					// update sorter, filters and pager
 					var parsed = RQL.parse(qs).normalize();
 					console.log('PARSED', parsed);
-					var entity = new Entity({
-						url: parts[0]
-					});
-					/***
+					model.entity.query = parsed;
 					// update columns
 					var props = _.keys(parsed.selectObj || {});
 					if (!props.length) props = ['id'];
@@ -270,8 +185,12 @@ model = {
 						model.entity.items = ko.mapping.fromJS(data);
 						// set entity name
 						model.entity.name(parts[0]);
+						/*$('.list').tablify({
+							entity: entity,
+							query: query,
+							data: data // raw data?!
+						});*/
 					}
-					***/
 				},
 				error: function(){
 					callback([]);
@@ -282,16 +201,58 @@ model = {
 
 	$(function(){
 
-		//
-		new HeaderApp;
-		new NavApp;
-		new FooterApp;
-		new App;
-		window.model.set(session);
+/*myViewModel.personName.subscribe(function(newValue) {
+//		alert("The person's new name is " + newValue);
+});
 
+		myViewModel.personGirlsEnough = ko.dependentObservable(function(){
+				return this.personGirls().length > 2 ? "enough?" : "need more";
+		}, myViewModel);
+
+
+		//ko.applyBindings(myViewModel, $('#content')[0]);
+		ko.applyBindings(window.model);
+
+		setTimeout(function(){
+			myViewModel.personName('Vladimir');
+		}, 2000);
+*/
 		// let the history begin
-		var controller = new Controller();
+		controller = new Controller();
+			//console.log('INIT', Object.keys(this.routes));
+			//controller.route(/^(.*?)\/^([^?]*?)(\?(.*?))?$/, 'viewInstance1', function(){
+			//	console.log('INSTANCE', this, arguments);
+			//	// ?123=as
+			//});
+		//console.log('CONTR', controller);
+		ko.applyBindings(model);
 		Backbone.history.start();
+
+
+/*
+var text = 'id=123&user=456&pass=789&sort(pass,-user)&limit(10,3)';
+window.query = norm(RQL.parse(text).normalize());
+function norm(q){
+	q.sort = q.sortObj; delete q.sortObj; delete q.sortArr;
+	delete q.search; delete q.needCount;
+	q.select = q.selectObj; delete q.selectObj; delete q.selectArr;
+	q.skip = q.limit[1];
+	q.limit = q.limit[0];
+	for (var i in q.last) {
+		if (q.last[i].name === 'eq') {
+			q.last[i] = String(q.last[i].args[1]);
+		} else {
+			delete q.last[i];
+		}
+	}
+	return q;
+}
+window.qqq = ko.mapping.fromJS(query);
+ko.applyBindings({
+	text: ko.observable(text),
+	query: qqq
+}, $('#content')[0]);
+*/
 
 		// a.toggle toggles the next element visibility
 		$(document).delegate('a.toggle', 'click', function(){
@@ -372,3 +333,19 @@ model = {
 
 	});
 });
+
+function norm(q){
+	q.sort = q.sortObj; delete q.sortObj; delete q.sortArr;
+	delete q.search; delete q.needCount;
+	q.select = q.selectObj; delete q.selectObj; delete q.selectArr;
+	q.skip = q.limit[1];
+	q.limit = q.limit[0];
+	for (var i in q.last) {
+		if (q.last[i].name === 'eq') {
+			q.last[i] = String(q.last[i].args[1]);
+		} else {
+			delete q.last[i];
+		}
+	}
+	return q;
+}

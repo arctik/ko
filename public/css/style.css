@@ -1,3 +1,10 @@
 tr.selected {
 	background-color: #ffff00 !important;
 }
+
+th[data-sort] {
+	background-color: #00ffff !important;
+}
+
+.copyright {
+}

@@ -36,10 +36,28 @@
 
 <body class="container_16 clearfix">
 
-	<header id="header" class="container_16 clearfix" data-template="???"></header>
-	<nav id="nav" class="container_16 clearfix"></nav>
-	<div id="content" class="container_16 clearfix"></div>
-	<footer id="footer" class="container_16 clearfix"></footer>
+	<header id="header" class="container_16 clearfix" data-bind="template: 'tmpl-header'"></header>
+	<nav id="nav" class="container_16 clearfix" data-bind="template: 'tmpl-navigation', visible: userEmail()"></nav>
+	<div id="content" class="container_16 clearfix">
+		<div data-bind="visible: !userEmail()">
+Lorem ipsum dolor sit amet <br>
+Consectetuer lacinia volutpat vestibulum id <br>
+Vitae nulla penatibus facilisi id <br>
+Nulla Ut consequat at consequat <br>
+Velit euismod Nullam auctor magna <br>
+Sem ipsum porttitor in Curabitur <br>
+Eu consectetuer nunc et Vestibulum <br>
+Pretium Aenean Vivamus lacus tortor <br>
+Quis Sed ipsum arcu metus <br>
+Id orci et Vestibulum tortor <br>
+Ut felis urna eros Curabitur <br>
+Sapien dolor Phasellus lorem Duis <br>
+Pellentesque at pretium lacus ornare <br>
+Cursus est risus hendrerit et <br>
+		</div>
+		<div data-bind="visible: userEmail(), template: {name: 'tmpl-list', data: entity}"></div>
+	</div>
+	<footer id="footer" class="container_16 clearfix" data-bind="template: 'tmpl-footer'"></footer>
 
 	<!-- Javascript at the bottom for fast page loading -->
 	<script type="text/javascript" data-main="js/main.js" src="js/requireplugins-jquery-1.4.4.js"></script>
@@ -56,16 +74,9 @@
 	<script id="tmpl-header" type="text/x-jquery-tmpl">
 		<div class="grid_12 alpha">&nbsp;</div>
 		<div class="grid_4 omega">
-			<% if (user.email) { %>
-			<div><span><%= user.email %></span>
-				<form id="logout" class="modal" style="display: inline;">
-					<button type="submit">Logout</button>
-				</form>
-			</div>
-			<% } else { %>
-			<div>
+			<div data-bind="visible: !userEmail()">
 				<a href="#login" class="toggle">Login</a>
-				<form id="login" class="modal" style="display: none;">
+				<form class="modal" data-bind="submit: login" style="display: none;">
 					<input type="text" size="10" name="user" placeholder="Username" />
 					<input type="password" size="10" name="pass" placeholder="Password" />
 					<label>Stay signed in<input type="checkbox" name="remember" /></label>
@@ -75,7 +86,7 @@
 					</div>
 				</form>
 				<a href="#signup" class="toggle">Signup</a>
-				<form id="signup" class="modal" style="display: none;">
+				<form class="modal" data-bind="submit: signup" style="display: none;">
 					<input type="text" size="10" name="user" placeholder="Username" />
 					<input type="password" size="10" name="pass" placeholder="Password" />
 					<div class="buttons">
@@ -84,57 +95,37 @@
 					</div>
 				</form>
 			</div>
-			<% } %>
+			<div data-bind="visible: userEmail()"><span data-bind="text: userEmail"></span>
+				<form class="modal" action="/logout" data-bind="submit: logout" style="display: inline;">
+					<button type="submit">Logout</button>
+				</form>
+			</div>
 		</div>
 	</script>
 
 	<script id="tmpl-footer" type="text/x-jquery-tmpl">
-		<div class="copyright grid_8 alpha">
-			&copy; 2010<% if (year !== '2010') { %>-<%=year%><% } %> Your company here
-		</div>
-		<div class="grid_8 omega">
-			<a href="#contact">Contact us</a>
+		<div class="copyright">
+			&copy; 2010{{if year !== '2010'}}-${year}{{/if}} Your company here
 		</div>
 	</script>
 
 	<script id="tmpl-navigation" type="text/x-jquery-tmpl">
-		<% if (user.email) { %>
 		<div class="menu grid_12 alpha">
 			<a href="#Bar">Bar</a>
 			<a href="#Course">Course</a>
+			[<span data-bind="text: query"></span>]
 		</div>
-		<form><input class="grid_4 omega" type="search" /></form>
-		<% } %>
-	</script>
-
-	<script id="tmpl-content" type="text/x-jquery-tmpl">
-		<% if (user.email) { %>
-		<div id="list"></div>
-		<% } else { %>
-		<div>
-Lorem ipsum dolor sit amet <br>
-Consectetuer lacinia volutpat vestibulum id <br>
-Vitae nulla penatibus facilisi id <br>
-Nulla Ut consequat at consequat <br>
-Velit euismod Nullam auctor magna <br>
-Sem ipsum porttitor in Curabitur <br>
-Eu consectetuer nunc et Vestibulum <br>
-Pretium Aenean Vivamus lacus tortor <br>
-Quis Sed ipsum arcu metus <br>
-Id orci et Vestibulum tortor <br>
-Ut felis urna eros Curabitur <br>
-Sapien dolor Phasellus lorem Duis <br>
-Pellentesque at pretium lacus ornare <br>
-Cursus est risus hendrerit et <br>
-		</div>
-		<% } %>
+		<form data-bind="submit: doSearch"><input class="grid_4 omega" type="search" data-bind="value: search" /></form>
 	</script>
 
 	<script id="tmpl-list" type="text/x-jquery-tmpl">
+		<div class="grid_16"><span data-bind="text: listCommand"></span></div>
 		<div class="leftMenu grid_3 alpha">Actions</div>
 		<div class="list grid_10">
-			<!--select class="actions" data-bind="value: listCommand, options: listActions, optionsText: 'title', optionsCaption: 'Command'"></select-->
-			<form action="/<%=name%>">
+			ENTITY[[<span data-bind="text: name"></span>]]
+			QUERY[[<span data-bind="text: query"></span>]]
+			<select class="actions" data-bind="value: listCommand, options: listActions, optionsText: 'title', optionsCaption: 'Command'"></select>
+			<form action="/${name}" data-bind="submit: post">
 				<table id="list-${name}">
 					<thead>
 						<tr data-bind="template: {name: ['tmpl-'+name()+'-columns', 'tmpl-columns']}"></tr>

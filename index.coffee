@@ -67,7 +67,7 @@ class UserModel extends Store
 					# log out
 					#console.log 'LOGOUT'
 					context.save null
-					true
+					user: {}
 			else
 				if not user.password or not user.active
 					# not been activated
