@@ -194,16 +194,23 @@ handlerFactory = (app, before, after) ->
 				# run REST handler
 				method = req.method
 				path = req.location.pathname
-				search = req.location.search
+				search = req.location.search or ''
 				data = req.params
 				# REST handler
 				# find the method handler by descending into model own properties
-				model = Object.drillDown session.context, path.substring(1).split '/'
+				parts = path.substring(1).split '/'
+				model = Object.drillDown session.context, parts
 				# bail out unless the handler is determined
-				return null unless model
+				unless model
+					return null if parts.length isnt 2
+					# /Foo/bar --> try to mangle to /Foo?id=bar
+					model = Object.drillDown session.context, [parts[0]]
+					return null unless model
+					search += '&' if search
+					search += 'id=' + parts[1]
 				# parse query
 				# N.B. sometimes we want to pass bulk parameters, say ids to DELETE
-				#   we may do it as follows: POST /Foo?in(id,$1) x-method: delete {queryParameters: [[id1,id2,...]]}
+				#   we may do it as follows: POST /Foo?in(id,$1) x-http-method-override: delete {queryParameters: [[id1,id2,...]]}
 				# N.B. sometimes we want to both pass bulk parameters and some data, say ids and props to POST
 				#   we may do it as follows: POST /Foo?in(id,$1) {queryParameters: [[id1,id2,...]], data: props}
 				if data.queryParameters

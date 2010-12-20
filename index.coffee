@@ -145,7 +145,7 @@ class WebRootUser extends WebRootPublic
 
 class WebRootAdmin extends WebRootUser
 	Foo: model.Foo
-	Bar: model.Bar.permissiveFacet ['top2']
+	Bar: _.bindAll model.Bar, 'find', 'findById', 'save', 'mupdate', 'remove', 'top2'
 	Course: _.bindAll model.Course, 'find', 'findById'
 
 facets.public = new WebRootPublic()

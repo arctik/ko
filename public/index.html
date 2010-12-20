@@ -133,98 +133,54 @@ Cursus est risus hendrerit et <br>
 	<script id="tmpl-list" type="text/x-jquery-tmpl">
 		<div class="leftMenu grid_3 alpha">Actions</div>
 		<div class="list grid_10">
-			<!--select class="actions" data-bind="value: listCommand, options: listActions, optionsText: 'title', optionsCaption: 'Command'"></select-->
+			<select class="actions">
+				<option></option>
+				<option value="all">All</option>
+				<option value="none">None</option>
+				<option value="toggle">Toggle</option>
+			</select>
 			<form action="/<%=name%>">
-				<table id="list-${name}">
+				<table id="list-<%=name%>">
 					<thead>
-						<tr data-bind="template: {name: ['tmpl-'+name()+'-columns', 'tmpl-columns']}"></tr>
-						<tr data-bind="template: {name: ['tmpl-'+name()+'-filters', 'tmpl-filters']}"></tr>
+						<tr>
+							<th></th>
+							<% _.each(props, function(prop){ %>
+							<th rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%></th>
+							<% }); %>
+						</tr>
+						<tr>
+							<th></th>
+							<% _.each(props, function(prop){ %>
+							<th>
+								<input type="search" name="<%=prop.name%>" class="search"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
+							</th>
+							<% }); %>
+						</tr>
 					</thead>
-					<tbody data-bind="template: {name: ['tmpl-'+name()+'-item', 'tmpl-item'], foreach: items}"></tbody>
+					<tbody><% _.each(items, function(item){ %>
+						<tr rel="<%=item.id%>">
+							<td class="actions"><input type="checkbox" class="action-select" /></td>
+							<% _.each(props, function(prop){ %>
+							<td>
+								<% if (prop.name === 'id') { %>
+									<a href="#form:<%=name%>/<%=item.id%>"><%=item.id%></a>
+								<% } else { %>
+									<%=item[prop.name]%>
+								<% } %>
+							</td>
+							<% }); %>
+						</tr>
+					<% }); %></tbody>
 					<tfoot></tfoot>
 				</table>
 				<button data-bind="click: removeSelected">Delete</button>
 				<button data-bind="click: addNew">Add new</button>
 			</form>
 			<div>
-				Displaying ${+query.limit[1]+1} to ${+query.limit[1]+1+items().length} items
+				Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
 			</div>
 		</div>
 		<div class="rightMenu grid_3 omega">Filters</div>
-	</script>
-
-	<script id="tmpl-columns000" type="text/x-jquery-tmpl">
-		<th></th>
-		{{each props()}}<th>${$data}</th>{{/each}}
-	</script>
-
-	<script id="tmpl-columns" type="text/x-jquery-tmpl">
-		<th></th>
-		{{each(j, prop) props()}}
-		<th rel="${prop}" class="{{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
-			${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
-		</th>
-		{{/each}}
-	</script>
-
-	<script id="tmpl-filters" type="text/x-jquery-tmpl">
-		<th></th>
-		{{each(j, prop) props()}}
-		<th>
-			<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
-		</th>
-		{{/each}}
-	</script>
-
-	<script id="tmpl-Bar-columns" type="text/x-jquery-tmpl">
-		<th></th>
-		<th rel="user"{{if query.sortObj.user}}data-sort="${query.sortObj.user}"{{/if}}>Логин</th>
-		<th rel="pass"{{if query.sortObj.pass}}data-sort="${query.sortObj.pass}"{{/if}}>Пароль</th>
-		<th rel="email"{{if query.sortObj.email}}data-sort="${query.sortObj.email}"{{/if}}>Почта</th>
-	</script>
-
-	<script id="tmpl-Bar-item" type="text/x-jquery-tmpl">
-		<tr rel="${id}">
-			<td class="actions"><input type="checkbox" class="action-select" /></td>
-			<td>${user}</td>
-			<td>${pass}</td>
-			<td>${email}</td>
-			<td>${Date.now()}</td>
-		</tr>
-	</script>
-
-	<script id="tmpl-Course-columns" type="text/x-jquery-tmpl">
-		<th rel="id">Валюта</th>
-		<th rel="value">Курс</th>
-	</script>
-
-	<script id="tmpl-Course-filters" type="text/x-jquery-tmpl">
-		<th><input type="search" name="id" class="search"{{if query.last.id}} value="${query.last.id.args[1]}"{{/if}} /></th>
-		<th></th>
-	</script>
-
-	<script id="tmpl-Course-item" type="text/x-jquery-tmpl">
-		<tr>
-			<td data-bind="text: id"></td>
-			<td data-bind="text: value"></td>
-		</tr>
-	</script>
-
-	<script id="tmpl-item1" type="text/x-jquery-tmpl">
-		<tr data-bind="template: {name: 'tmpl-data', foreach: $data}"></tr>
-	</script>
-
-	<script id="tmpl-item2" type="text/x-jquery-tmpl">
-		<tr rel="${$data.id}"><td>${console.log($item)}</td></tr>
-	</script>
-
-	<script id="tmpl-prop" type="text/x-jquery-tmpl">
-		<th data-bind="text: $data"></th>
-	</script>
-
-	<script id="tmpl-value" type="text/x-jquery-tmpl">
-					<tbody data-bind="template: {name: 'tmpl-item', foreach: items}"></tbody>
-		<td data-bind="text: $data"></td>
 	</script>
 
 	<script id="tmpl-login" type="text/x-jquery-tmpl">
@@ -242,12 +198,6 @@ Cursus est risus hendrerit et <br>
 <script id="tmpl-list11111111111111" type="text/x-jquery-tmpl">
 <div class="leftMenu grid_3 alpha">Left Menu</div>
 <div class="list grid_10">
-<select class="actions">
-	<option></option>
-	<option value="all">All</option>
-	<option value="none">None</option>
-	<option value="toggle">Toggle</option>
-</select>
 <form method="post">
 <table>
 	<thead>

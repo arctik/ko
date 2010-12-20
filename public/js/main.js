@@ -14,7 +14,7 @@ _.mixin({
 		}
 		var text = null;
 		_.each(ids, function(id){
-			console.log('PART', id);
+			//console.log('PART', id);
 			var t = $('#tmpl-'+id);
 			if (t && !text) {
 				text = t.text();
@@ -24,20 +24,51 @@ _.mixin({
 	}
 });
 
-window.Model = Backbone.Model.extend({
+var __props__ = {
+	Bar: [
+		{name: 'user', title: 'Логин'},
+		{name: 'pass', title: 'Пароль'},
+		{name: 'email', title: 'Мыло'}
+	],
+	Course: [
+		{name: 'id', title: 'Валюта'},
+		{name: 'value', title: 'Курс'},
+	]
+};
+
+var Model = Backbone.Model.extend({
+	//entity:
 });
 
-window.model = new window.Model;
-window.model.bind('change', function(){
+var Entity = Backbone.Collection.extend({
+	updateMany: function(ids, props){
+		var url = getUrl(this) || urlError();
+		url += '?in(id,$1)';
+		var data = {queryParameters: [ids]};
+		var method = 'POST';
+	},
+	destroyMany: function(ids){
+		var url = getUrl(this) || urlError();
+		url += '?in(id,$1)';
+		var data = {queryParameters: [ids]};
+		var method = 'DELETE';
+	}
+});
+
+var model = window.model = new Model({
+	entity: new Entity() 
+});
+model.bind('change', function(){
 	console.log('MODELCHANGE', this, arguments);
 });
 
 var HeaderApp = Backbone.View.extend({
-	model: window.model,
+	model: model,
 	el: $('#header'),
 	template: _.partial('header'),
 	render: function(){
 		this.el.html(this.template(this.model.toJSON()));
+		return this;
 	},
 	events: {
 		'submit #login': 'login',
@@ -105,9 +136,8 @@ var HeaderApp = Backbone.View.extend({
 });
 
 var FooterApp = Backbone.View.extend({
-	model: window.model,
+	model: model,
 	el: $('#footer'),
-	//template: _.template($('#footer').text()),
 	template: _.partial('footer'),
 	render: function(){
 		this.el.html(this.template({
@@ -116,6 +146,7 @@ var FooterApp = Backbone.View.extend({
 			//
 			year: (new Date()).toISOString().substring(0, 4),
 		}));
+		return this;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
@@ -124,11 +155,12 @@ var FooterApp = Backbone.View.extend({
 });
 
 var NavApp = Backbone.View.extend({
-	model: window.model,
+	model: model,
 	el: $('#nav'),
 	template: _.partial('navigation'),
 	render: function(){
 		this.el.html(this.template(this.model.toJSON()));
+		return this;
 	},
 	events: {
 		'submit form': 'doSearch'
@@ -145,15 +177,13 @@ var NavApp = Backbone.View.extend({
 	}
 });
 
-var Entity = Backbone.Collection.extend({
-});
-
 var App = Backbone.View.extend({
-	model: window.model,
+	model: model,
 	el: $('#content'),
 	template: _.partial('content'),
 	render: function(){
 		this.el.html(this.template(this.model.toJSON()));
+		return this;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
@@ -162,15 +192,28 @@ var App = Backbone.View.extend({
 });
 
 var EntityView = Backbone.View.extend({
-	model: window.model,
-	el: $('#list'),
-	template: _.partial('list'),
+	model: model.get('entity'),
 	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
+		var name = this.model.name;
+		var items = this.model.toJSON();
+		var query = this.model.query;
+		var props = this.model.props;
+		if (_.keys(query.selectObj).length) {
+			props = _.filter(, function(x){return x.name in query.selectObj;});
+		}
+		var template = _.partial([name+'-list', 'list']); 
+		$('#list').html(template({
+			name: name,
+			items: items,
+			query: query,
+			props: props
+		}));
+		return this;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
 		this.model.bind('change', this.render);
+		this.model.bind('refresh', this.render);
 	}
 });
 
@@ -245,38 +288,14 @@ model = {
 			var parts = query.split('?');
 			var qs = parts[1];
 			parts = _.filter(parts[0].split('/'), function(x){return !!x;}); // _.???
-			$.ajax({
-				url: url,
-				dataType: 'json',
-				success: callback = function(data){
-					// update sorter, filters and pager
-					var parsed = RQL.parse(qs).normalize();
-					console.log('PARSED', parsed);
-					var entity = new Entity({
-						url: parts[0]
-					});
-					/***
-					// update columns
-					var props = _.keys(parsed.selectObj || {});
-					if (!props.length) props = ['id'];
-					model.entity.props(props);
-					// update rows
-					// TODO: MAKE OWN MAPPING BASED ON PROPS OF MODEL
-					if (parts[0] === model.entity.name()) {
-						console.log('UPDATINGITEMS', data);
-						ko.mapping.updateFromJS(model.entity.items, data);
-					} else {
-						console.log('LOADINGITEMS', data);
-						model.entity.items = ko.mapping.fromJS(data);
-						// set entity name
-						model.entity.name(parts[0]);
-					}
-					***/
-				},
-				error: function(){
-					callback([]);
-				}
-			});
+
+			var m = model.get('entity');
+			console.log('MO', m);
+			m.url = url;
+			m.name = parts[0];
+			m.query = RQL.parse(qs).normalize();
+			m.props = __props__[m.name];
+			m.fetch();
 		}
 	});
 
@@ -287,6 +306,7 @@ model = {
 		new NavApp;
 		new FooterApp;
 		new App;
+		new EntityView;
 		window.model.set(session);
 
 		// let the history begin
@@ -328,6 +348,21 @@ model = {
 			var fn = $(this).attr('checked');
 			$(this).parents('tr:first').toggleClass('selected', fn);
 		})
+		// selecting command from combo executes it
+		.delegate('.actions', 'change', function(e){
+			e.preventDefault();
+			var cmd = $(this).val();
+			switch (cmd) {
+				case 'all':
+				case 'none':
+				case 'toggle':
+					var fn = cmd === 'all' ? true : cmd === 'none' ? false : function(){return !this.checked;};
+					var parent = $(this).parents('div.list:first');
+					parent.find('.action-select:enabled').attr('checked', fn).change();
+					break;
+			}
+			$(this).val(null);
+		}) 
 		// handle multi-sort
 		.delegate('th[rel]', 'click', function(e){
 			e.preventDefault();
@@ -360,10 +395,11 @@ model = {
 				sss.push(x);
 			});
 			sss = _.pluck(_.sortBy(sss, function(x){return x.value;}), 'id');
-			console.log('SORTS', sss);
 			// re-sort
-			model.entity.query.sort = sss;
-			location.href = location.href.replace(/\?.*$/, '?'+model.entity.query);
+			// TODO: should know nothing about the model!
+			model.get('entity').query.sort = sss;
+			//console.log('SORTS', sss, '?'+model.get('entity').query, location.href, location.href.split('?')[0] + '?'+model.get('entity').query);
+			location.href = location.href.split('?')[0] + '?'+model.get('entity').query;
 			//reload();
 			return false;
 		});
