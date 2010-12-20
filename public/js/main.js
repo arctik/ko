@@ -56,7 +56,7 @@ var Entity = Backbone.Collection.extend({
 });
 
 var model = window.model = new Model({
-	entity: new Entity() 
+	entity: new Entity()
 });
 model.bind('change', function(){
 	console.log('MODELCHANGE', this, arguments);
@@ -193,22 +193,201 @@ var App = Backbone.View.extend({
 
 var EntityView = Backbone.View.extend({
 	model: model.get('entity'),
+	_lastClickedRow: 0,
 	render: function(){
 		var name = this.model.name;
 		var items = this.model.toJSON();
 		var query = this.model.query;
 		var props = this.model.props;
-		if (_.keys(query.selectObj).length) {
-			props = _.filter(, function(x){return x.name in query.selectObj;});
+		if (query.selectArr.length) {
+			var selectedProps = _.map(query.selectObj, function(show, name){if (show) return _.detect(props, function(x){return x.name === name});});
+			//if (!query.selectObj.id) selectedProps.unshift(_.detect(props, function(x){return x.name === 'id'}));
+			props = selectedProps;
 		}
-		var template = _.partial([name+'-list', 'list']); 
-		$('#list').html(template({
+		//console.log('RENDER', query, props);
+		$(this.el).html(_.partial([name+'-list', 'list'], {
 			name: name,
 			items: items,
 			query: query,
 			props: props
-		}));
+		})).appendTo($('#entity'));
+
+		// N.B. workaround: textchange event can not be delegated...
+		// reload the View after a 1 sec timeout elapsed after the last textchange event on filters
+		var self = this;
+		var timeout;
+		$(this.el).find(':input.filter').bind('textchange', function(){
+			clearTimeout(timeout);
+			var $this = $(this);
+			var name = $this.attr('name');
+			timeout = setTimeout(function(){
+				self.reload();
+			}, 1000);
+			return false;
+		});
+
 		return this;
+	},
+	events: {
+		'change .action-select:enabled': 'selectRow',
+		'click .action-select:enabled': 'selectSequence',
+		'change .actions': 'command',
+		//'textchange .filter': 'filter',
+		'click .action-sort': 'sort',
+		'change .action-limit': 'setPageSize',
+		'click .pager a': 'gotoPage',
+		'submit form': 'act'
+	},
+	act: function(e){
+		console.log('FORM SUBMIT!');
+		return false;
+	},
+	reload: function(){
+		var query = this.model.query;
+		var filters = $(this.el).find(':input.filter');
+		filters.each(function(i, x){
+			var name = $(x).attr('name');
+			var val = $(x).val();
+			// TODO: treat val as RQL?!
+			if (val)
+				query.filter(RQL.Query().match(name, val, 'i'));
+		});
+		console.log('FILTER', query, query+'');
+		// FIXME: location is bad, consider manually calling controller + saveLocation
+		location.href = location.href.split('?')[0] + '?' + query;
+	},
+	filter: function(e){
+		this.reload();
+	},
+	// mark checked checkbox container as selected
+	selectRow: function(e){
+		e.preventDefault();
+		var fn = $(e.target).attr('checked');
+		// FIXME: template assumption!
+		$(e.target).parents('tr:first').toggleClass('selected', fn);
+	},
+	// gmail-style selection, shift-click selects the sequence
+	selectSequence: function(e){
+		var t = e.target;
+		// FIXME: template assumption!
+		var parent = $(t).parents('table:first');
+		var all = parent.find('.action-select:enabled');
+		var first = all.index(t);
+		if (e.shiftKey) {
+			var last = this._lastClickedRow;
+			var start = Math.min(first, last);
+			var end = Math.max(first, last);
+			//console.log('SHI', start, end, all.slice(start, end+1));
+			var fn = $(t).attr('checked');
+			all.slice(start, end+1).attr('checked', fn).change();
+		}
+		this._lastClickedRow = first;
+	},
+	// execute a command from commands combo
+	command: function(e){
+		e.preventDefault();
+		var cmd = $(e.target).val();
+		//console.log('COMMAND', cmd, this);
+		switch (cmd) {
+			case 'all':
+			case 'none':
+			case 'toggle':
+				var fn = cmd === 'all' ? true : cmd === 'none' ? false : function(){return !this.checked;};
+				$(this.el).find('.action-select:enabled').attr('checked', fn).change();
+				break;
+		}
+		$(e.target).val(null);
+	},
+	/*sort: function(e){
+		var t = e.target;
+		// FIXME: template assumption!
+		var parent = $(t).parents('table:first');
+		var cols = parent.find('.action-sort');
+		var maxSort = 0;
+		var sorts = [];
+		cols.each(function(i, c){
+			var $c = $(c);
+			sorts[i] = {
+				id: $c.attr('rel'),
+				value: $c.attr('data-sort')
+			};
+		});
+		//console.log('SORTS', sorts);
+		var me = cols.index(t);
+		var state = sorts[me].value;
+		if (!e.shiftKey) {
+			for (var i = 0; i < sorts.length; i += 1) sorts[i].value = undefined;
+			// unshifted click always sorts ascending clicked column
+			state = 0;
+		}
+		if (!state) state = cols.length; else if (state > 0) state = -state; else state = undefined;
+		sorts[me].value = state;
+		var sss = [];
+		_.each(sorts, function(x){
+			if (!x.value) return;
+			if (x.value < 0) {
+				x.id = '-'+x.id;
+				x.value = -x.value;
+			}
+			sss.push(x);
+		});
+		sss = _.pluck(_.sortBy(sss, function(x){return x.value;}), 'id');
+		// re-sort
+		this.model.query.sort = sss;
+		this.reload();
+		return false;
+	},*/
+	// handle multi-column sort
+	sort: function(e){
+		var prop = $(e.target).attr('rel');
+		var query = this.model.query;
+		var sortOrder = query.sort;
+		var state = query.sortObj[prop];
+		var multi = sortOrder.length > 1;
+		// TODO: switch off a column if multi
+		if (!state) {
+			if (!e.shiftKey) sortOrder = [];
+			sortOrder.push(prop);
+		} else {
+			var p = state > 0 ? '-'+prop : prop;
+			if (!e.shiftKey) {
+				sortOrder = [multi ? prop : p];
+			} else {
+				var i = Object.keys(query.sortObj).indexOf(prop);
+				sortOrder[i] = p;
+			}
+		}
+		// re-sort
+		query.sort = sortOrder;
+		this.reload();
+		return false;
+	},
+	// handle pagination
+	setPageSize: function(e){
+		this.model.query.limit[0] = +($(e.target).val());
+		this.reload();
+		return false;
+	},
+	gotoPage: function(e){
+		var items = this.model.toJSON();
+		var query = this.model.query;
+		var limit = query.limit[0];
+		var start = Math.floor(query.limit[1] / limit);
+		// FIXME: we have no .total!
+		var count = Math.floor(((items.total || items.length) + limit - 1) / limit);
+		var el = $(e.target);
+		var page = start;
+		console.log('OP', page, limit, count, items.total);
+		if (el.is('.page-first')) page = 0;
+		else if (el.is('.page-last')) page = count > 0 ? count - 1 : 0;
+		else if (el.is('.page-prev')) page = Math.max(page - 1, 0);
+		else if (el.is('.page-next')) page = count > 0 ? Math.min(page + 1, count - 1) : 0;
+		//else if (el.is('.page-last')) page = count - 1;
+		// goto new page
+		//console.log('NP', page, limit);
+		query.limit[1] = page * limit;
+		this.reload();
+		return false;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
@@ -217,85 +396,25 @@ var EntityView = Backbone.View.extend({
 	}
 });
 
-/*
-model = {
-	entity: {
-		name: ko.observable(),
-		props: ko.observable([]),
-		items: ko.mapping.fromJS([]),
-		query: RQL.Query().normalize(),
-		listActions: [
-			{cmd: 'all', title: 'All'},
-			{cmd: 'none', title: 'None'},
-			{cmd: 'toggle', title: 'Toggle'}
-		],
-		listCommand: ko.observable(),
-		post: function(){
-			console.log('POSTENTITY', arguments);
-		},
-		removeSelected: function(){
-			// get ids from selected rows
-			var ids = []; $('#list-'+this.name()).find('tr.selected').each(function(i, row){ids.push($(row).attr('rel'))});
-			console.log('REMOVE', ids, this.name());
-			// issue POST to /<Entity> with body set to array of ids
-			$.ajax({
-				type: 'POST',
-				url: '/'+this.name()+'?in(id,$1)',
-				data: JSON.stringify({queryParameters: [ids]}),
-				contentType: 'application/json',
-				beforeSend: function(xhr){
-					xhr.setRequestHeader('x-http-method-override', 'DELETE');
-				},
-				success: function(session){
-					console.log('POSTANSWER', arguments);
-					controller.catchAll(Backbone.history.fragment);
-				},
-				error: function(){
-					console.log('BUMP', arguments);
-				}
-			});
-		},
-		addNew: function(){
-			// issue POST to /<Entity> to create blank record
-			$.ajax({
-				type: 'POST',
-				url: '/'+this.name(),
-				contentType: 'application/json',
-				success: function(session){
-					console.log('POSTANSWER', arguments);
-					controller.catchAll(Backbone.history.fragment);
-				},
-				error: function(){
-					console.log('BUMP', arguments);
-				}
-			});
-		}
-	}
-};
-*/
-
 	var Controller = Backbone.Controller.extend({
 		routes: {
-			'contact': 'contactUs',
-			'*query': 'catchAll'
+			'contact': 'contactUs'
+		},
+		initialize: function(){
+			this.route(/^([^/?]+)(?:\?(.*))?$/, 'entity', function(entity, query){
+				query = query || '';
+				console.log('QUERY', this, arguments);
+				var m = model.get('entity');
+				console.log('MO', m);
+				m.name = entity;
+				m.url = entity + '?' + query;
+				m.props = __props__[m.name];
+				m.query = RQL.parse(query).normalize({clear: _.pluck(m.props, 'name')});
+				m.fetch();
+			});
 		},
 		contactUs: function(){
 			console.log('CONTACTUS');
-		},
-		catchAll: function(query){
-			var callback;
-			var url = query.replace(/^#*/, '');
-			var parts = query.split('?');
-			var qs = parts[1];
-			parts = _.filter(parts[0].split('/'), function(x){return !!x;}); // _.???
-
-			var m = model.get('entity');
-			console.log('MO', m);
-			m.url = url;
-			m.name = parts[0];
-			m.query = RQL.parse(qs).normalize();
-			m.props = __props__[m.name];
-			m.fetch();
 		}
 	});
 
@@ -310,7 +429,7 @@ model = {
 		window.model.set(session);
 
 		// let the history begin
-		var controller = new Controller();
+		var controller = window.controller = new Controller();
 		Backbone.history.start();
 
 		// a.toggle toggles the next element visibility
@@ -326,85 +445,6 @@ model = {
 			$(this).parents('form').hide();
 			return false;
 		});
-		// gmail-style selection, shift-click selects the sequence
-		$(document)
-		.delegate('.action-select:enabled', 'click', function(e){
-			var parent = $(this).parents('table:first');
-			var all = parent.find('.action-select:enabled');
-			var first = all.index(this);
-			if (e.shiftKey) {
-				var last = +parent.attr('data-lastclicked'); if (isNaN(last)) last = 0;
-				var start = Math.min(first, last);
-				var end = Math.max(first, last);
-				//console.log('SHI', start, end, all.slice(start, end+1));
-				var fn = $(this).attr('checked');
-				all.slice(start, end+1).attr('checked', fn).change();
-			}
-			parent.attr('data-lastclicked', first);
-		})
-		// mark table rows containing checked checkboxes as selected
-		.delegate('.action-select:enabled', 'change', function(e){
-			e.preventDefault();
-			var fn = $(this).attr('checked');
-			$(this).parents('tr:first').toggleClass('selected', fn);
-		})
-		// selecting command from combo executes it
-		.delegate('.actions', 'change', function(e){
-			e.preventDefault();
-			var cmd = $(this).val();
-			switch (cmd) {
-				case 'all':
-				case 'none':
-				case 'toggle':
-					var fn = cmd === 'all' ? true : cmd === 'none' ? false : function(){return !this.checked;};
-					var parent = $(this).parents('div.list:first');
-					parent.find('.action-select:enabled').attr('checked', fn).change();
-					break;
-			}
-			$(this).val(null);
-		}) 
-		// handle multi-sort
-		.delegate('th[rel]', 'click', function(e){
-			e.preventDefault();
-			var parent = $(this).parents('table:first');
-			var cols = parent.find('th[rel]');
-			var maxSort = 0;
-			var sorts = [];
-			cols.each(function(i, c){
-				var $c = $(c);
-				sorts[i] = {
-					id: $c.attr('rel'),
-					value: $c.attr('data-sort')
-				};
-			});
-			//console.log('SORTS', sorts);
-			var me = cols.index(this);
-			var state = sorts[me].value;
-			if (!e.shiftKey) {
-				for (var i = 0; i < sorts.length; i += 1) sorts[i].value = undefined;
-			}
-			if (!state) state = cols.length; else if (state > 0) state = -state; else state = undefined;
-			sorts[me].value = state;
-			var sss = [];
-			_.each(sorts, function(x){
-				if (!x.value) return;
-				if (x.value < 0) {
-					x.id = '-'+x.id;
-					x.value = -x.value;
-				}
-				sss.push(x);
-			});
-			sss = _.pluck(_.sortBy(sss, function(x){return x.value;}), 'id');
-			// re-sort
-			// TODO: should know nothing about the model!
-			model.get('entity').query.sort = sss;
-			//console.log('SORTS', sss, '?'+model.get('entity').query, location.href, location.href.split('?')[0] + '?'+model.get('entity').query);
-			location.href = location.href.split('?')[0] + '?'+model.get('entity').query;
-			//reload();
-			return false;
-		});
-
-
 
 	});
 });

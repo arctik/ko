@@ -88,6 +88,18 @@
 		</div>
 	</script>
 
+	<script id="tmpl-login" type="text/x-jquery-tmpl">
+		<form class="modal" action="/login">
+			<input type="text" size="10" name="user" placeholder="Username" required="true" />
+			<input type="password" size="10" name="pass" placeholder="Password" required="true" />
+			<label>Stay signed in<input type="checkbox" name="remember" /></label>
+			<div class="buttons">
+				<button type="submit">Отправить</button>
+				<button onclick="history.back(); return false;">Отмена</button>
+			</div>
+		</form>
+	</script>
+
 	<script id="tmpl-footer" type="text/x-jquery-tmpl">
 		<div class="copyright grid_8 alpha">
 			&copy; 2010<% if (year !== '2010') { %>-<%=year%><% } %> Your company here
@@ -109,7 +121,8 @@
 
 	<script id="tmpl-content" type="text/x-jquery-tmpl">
 		<% if (user.email) { %>
-		<div id="list"></div>
+		<span><%=Date.now()%></span>
+		<div id="entity"></div>
 		<% } else { %>
 		<div>
 Lorem ipsum dolor sit amet <br>
@@ -145,14 +158,14 @@ Cursus est risus hendrerit et <br>
 						<tr>
 							<th></th>
 							<% _.each(props, function(prop){ %>
-							<th rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%></th>
+							<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
 							<% }); %>
 						</tr>
 						<tr>
 							<th></th>
 							<% _.each(props, function(prop){ %>
 							<th>
-								<input type="search" name="<%=prop.name%>" class="search"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
+								<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
 							</th>
 							<% }); %>
 						</tr>
@@ -179,85 +192,13 @@ Cursus est risus hendrerit et <br>
 			<div>
 				Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
 			</div>
-		</div>
-		<div class="rightMenu grid_3 omega">Filters</div>
-	</script>
-
-	<script id="tmpl-login" type="text/x-jquery-tmpl">
-		<form class="modal" action="/login">
-			<input type="text" size="10" name="user" placeholder="Username" required="true" />
-			<input type="password" size="10" name="pass" placeholder="Password" required="true" />
-			<label>Stay signed in<input type="checkbox" name="remember" /></label>
-			<div class="buttons">
-				<button type="submit">Отправить</button>
-				<button onclick="history.back(); return false;">Отмена</button>
-			</div>
-		</form>
-	</script>
-
-<script id="tmpl-list11111111111111" type="text/x-jquery-tmpl">
-<div class="leftMenu grid_3 alpha">Left Menu</div>
-<div class="list grid_10">
-<form method="post">
-<table>
-	<thead>
-		<tr>
-			<th></th>
-			{{each(j, prop) props}}
-			<th rel="${prop}" class="action-sort {{if query.sortObj[prop]}}sorted sorted_${query.sortObj[prop]<0?'desc':'asc'} sorted_${Math.abs(query.sortObj[prop])} {{/if}}">
-				${prop}{{if query.sortObj[prop]}} (${query.sortObj[prop]}){{/if}}
-			</th>
-			{{/each}}
-		</tr>
-		<tr>
-			<th></th>
-			{{each(j, prop) props}}
-			<th>
-				<input type="search" name="${prop}" class="search"{{if query.last[prop]}} value="${query.last[prop].args[1]}"{{/if}} />
-			</th>
-			{{/each}}
-		</tr>
-	</thead>
-	<tbody>
-		{{each(i, item) items()}}
-		<tr rel="${item.id}">
-			<td class="actions"><input type="checkbox" class="action-select" name="ids[]" value="${item.id}" /></td>
-			{{each(j, prop) props}}
-			<td rel="${prop}">
-				{{if prop === 'id'}}
-					<a href="#form:${$data.entity}?id=${item.id}">${item[prop]}</a>
-					<!--a href="#${item.id}">${item[prop]}</a-->
-				{{else}}
-					${item[prop]}
-				{{/if}}
-			</td>
-			{{/each}}
-		</tr>
-		{{/each}}
-	</tbody>
-	<tfoot>
-	</tfoot>
-</table>
-<button type="submit" name="action" value="delete">Delete</button>
-<!--button type="submit" name="action" value="filter">Filter</button-->
-</form>
-<div>
-Displaying ${1+query.limit[1]} to ${query.limit[1]+items().length} items
-</div>
-{{tmpl "#tmpl-listPager"}}
-</div>
-<div class="rightMenu grid_3 omega">Right Menu</div>
-</script>
-
-<script id="tmpl-listPager" type="text/x-jquery-tmpl">
-<div class="pagination">
+<div class="pager">
 <a href="javascript:void(0)" class="page-first">First</a>
 <a href="javascript:void(0)" class="page-prev">Prev</a>
-<a href="javascript:void(0)" class="page-?">?</a>
 <a href="javascript:void(0)" class="page-next">Next</a>
 <a href="javascript:void(0)" class="page-last">Last</a>
 <select class="action-limit">
-	<option value="${query.limit}">${query.limit[0]}</option>
+	<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
 	<option value="10">10</option>
 	<option value="25">25</option>
 	<option value="50">50</option>
@@ -265,9 +206,9 @@ Displaying ${1+query.limit[1]} to ${query.limit[1]+items().length} items
 	<option value="200">200</option>
 </select>
 </div>
-</script>
-
-
+		</div>
+		<div class="rightMenu grid_3 omega">Filters</div>
+	</script>
 
 </body>
 </html>

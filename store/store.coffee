@@ -112,7 +112,7 @@ class Store extends Database
 		#console.log 'INSERT?', document
 		super @collection, document, (err, result) =>
 			#console.log 'INSERT!', arguments
-			return deferred.reject err if err
+			return deferred.reject URIError err.message if err
 			result.id = result._id
 			delete result._id
 			@emit 'insert', result
@@ -149,7 +149,7 @@ class Store extends Database
 		#console.log 'MUPDATE?!', query, changes
 		# FIXME: how to $unset?!
 		Store.__super__.update.call @, @collection, query, changes, (err, result) =>
-			return deferred.reject err if err
+			return deferred.reject URIError err.message if err
 			@emit 'mupdate', result
 			deferred.resolve result
 		deferred.promise
@@ -160,7 +160,7 @@ class Store extends Database
 		console.log 'REM', query
 		throw TypeError() unless Object.keys(query.search).length
 		super @collection, query.search, (err, result) =>
-			return deferred.reject err if err
+			return deferred.reject URIError err.message if err
 			@emit 'remove', result
 			deferred.resolve result
 		deferred.promise
@@ -174,7 +174,7 @@ class Store extends Database
 		deferred = defer()
 		super @collection, query.search, query.meta, (err, result) =>
 			#console.log 'FOUND', arguments
-			return deferred.reject err if err
+			return deferred.reject URIError err.message if err
 			result.forEach (doc) ->
 				doc.id = doc._id
 				delete doc._id
@@ -199,7 +199,7 @@ class Store extends Database
 	mapReduce: (map, reduce) ->
 		deferred = defer()
 		super @collection, map, reduce, (err, result) ->
-			if err then deferred.reject err else deferred.resolve result
+			if err then deferred.reject URIError err.message else deferred.resolve result
 		deferred.promise
 	#
 	# get a frozen set of allowed methods to give safely to the consumer
