@@ -14,7 +14,10 @@ fs = require 'fs'
 run = require('./server').run
 Store = require('./store/store').Store
 Database = require('./store/store').Database
-
+global.Stor = require('./store/store').Stor
+global.Collection = require('./store/store').Collection
+global.Document = require('./store/store').Document
+global.Backbone = require 'backbone'
 
 db = new Database 'test', hex: true
 
@@ -31,21 +34,48 @@ RestrictiveFacet = (entity) ->
 	r[entity] =
 		read: db.find.bind db, entity
 
-B.sync = (method, model, options) ->
-	[entity, id] = model.url().split '/'
+Backbone.sync = (method, model, options) ->
+	entity = model.entity
+	id = model.id
 	data = model.toJSON()
 	if method is 'read'
-		db.find entity, (err, result) ->
+		search = {}
+		search._id = id if id
+		db.find entity, search, (err, result) ->
 			console.log "READ #{entity} #{id}", arguments
-			if err then options.error err else options.success result
+			if err
+				options.error err
+			else
+				result.forEach (doc) ->
+					doc.id = doc._id
+					delete doc._id
+				if id
+					result = result[0] or null
+				options.success result
 	else if method is 'update'
-		db.modify entity, {query: {_id: data.id}, update: data, new: true}, (err, result) ->
+		if id
+			data._id = id
+			delete data.id
+		db.modify entity, {query: {_id: id}, update: data, new: true}, (err, result) ->
 			console.log "UPDATE #{entity} #{id}", arguments
-			if err then options.error err else options.success result
+			if err
+				options.error err
+			else
+				result.id = result._id
+				delete result._id
+				options.success result
 	else if method is 'create'
+		#if id
+		#	data._id = id
+		#	delete data.id
 		db.insert entity, data, (err, result) ->
 			console.log "CREATE #{entity} #{id}", arguments
-			if err then options.error err else options.success result
+			if err
+				options.error err
+			else
+				result.id = result._id
+				delete result._id
+				options.success result
 	else if method is 'delete'
 		db.remove entity, {_id: data.id}, (err, result) ->
 			console.log "DELETE #{entity} #{id}", arguments
@@ -68,6 +98,9 @@ global.Bar = B.Collection.extend
 '''
 
 #Bar = new B.Collection(); Bar.url = function(){return 'Bar'}; Bar.fetch({success:console.log})
+
+global.BarM = Backbone.Model.extend
+	entity: 'Bar'
 
 global.f =
 	Bar: PermissiveFacet 'Bar'
@@ -214,6 +247,16 @@ facets.admin = new WebRootAdmin()
 global.model = model
 global.facets = facets
 
+
+##################################
+
+global.Collection = Collection
+global.Document = Document
+global.B = new Collection 'Bar'
+#global.b = B.create foo: 123
+
+############################
+
 wait waitAllKeys(model), (_facets) ->
 	# run
 	app = Object.create require('events').EventEmitter.prototype,
@@ -275,3 +318,7 @@ wait waitAllKeys(model), (_facets) ->
 								context = facets[level] or {}
 		#handler: handler
 	run app
+
+
+
+

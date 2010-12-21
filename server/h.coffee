@@ -46,7 +46,6 @@ global.Step = (context, steps) ->
 # Object helpers
 #
 global._ = require 'underscore'
-global.B = require 'backbone'
 
 Object.apply = (o, props) ->
 	x = Object.create o
@@ -55,6 +54,7 @@ Object.apply = (o, props) ->
 		Object.defineProperty x, k, prop
 	x
 
+# TODO: use _
 # shallow copy
 Object.clone = (o) ->
 	n = Object.create Object.getPrototypeOf o

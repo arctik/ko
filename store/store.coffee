@@ -97,28 +97,27 @@ parse = (query) ->
 #
 # Store
 #
-class Store extends Database
-	constructor: (@collection, options) ->
+class Store000000000000000000 extends Database
+	constructor: (options) ->
 		options ?= {}
 		options.hex ?= true
 		super options.name or 'test', options
 		#@options.host.replace /^mongodb:\/\/([^\/]+)/ # TODO
-	insert: (document) ->
+	insert: (collection, document) ->
 		document ?= {}
 		if document.id
 			document._id = document.id
 			delete document.id
 		deferred = defer()
 		#console.log 'INSERT?', document
-		super @collection, document, (err, result) =>
+		super collection, document, (err, result) =>
 			#console.log 'INSERT!', arguments
 			return deferred.reject URIError err.message if err
 			result.id = result._id
 			delete result._id
-			@emit 'insert', result
 			deferred.resolve result
 		deferred.promise
-	update: (document) ->
+	update: (collection, document) ->
 		document ?= {}
 		if document.id
 			document._id = document.id
@@ -126,46 +125,37 @@ class Store extends Database
 		deferred = defer()
 		#console.log 'UPDATE?', document
 		# TODO: _deleted: true --> means remove!
-		Store.__super__.modify.call @, @collection, query: {_id: document._id}, update: document, new: true, (err, result) =>
+		Store.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true}, (err, result) =>
 			#console.log 'UPDATE!', arguments
 			return deferred.reject null if err
 			result.id = result._id
 			delete result._id
-			@emit 'update', result
 			deferred.resolve result
 		deferred.promise
-	save: (document) ->
+	save: (collection, document) ->
 		document ?= {}
 		if not document.id
 			# TODO: fill with defaults first?
-			@insert document
+			@insert collection, document
 		else
-			@update document
-	mupdate: (changes, query) ->
-		changes ?= {}
-		@validateOnPut changes, true
-		query = parse(query).search
-		query.$atomic = 1
-		deferred = defer()
-		#console.log 'MUPDATE?!', query, changes
-		# FIXME: how to $unset?!
-		Store.__super__.update.call @, @collection, query, changes, (err, result) =>
-			return deferred.reject URIError err.message if err
-			@emit 'mupdate', result
-			deferred.resolve result
-		deferred.promise
-	remove: (query) ->
+			@update collection, document
+	remove: (collection, query) ->
 		query = parse query
 		deferred = defer()
 		# fuser
-		console.log 'REM', query
-		throw TypeError() unless Object.keys(query.search).length
-		super @collection, query.search, (err, result) =>
+		#console.log 'REM', query
+		throw TypeError 'Refused to remove the whole collection' unless Object.keys(query.search).length
+		super collection, query.search, (err, result) =>
 			return deferred.reject URIError err.message if err
-			@emit 'remove', result
 			deferred.resolve result
 		deferred.promise
-	find: (query) ->
+	drop: (collection) ->
+		deferred = defer()
+		super collection, (err, result) =>
+			return deferred.reject URIError err.message if err
+			deferred.resolve result
+		deferred.promise
+	find: (collection, query) ->
 		#console.log 'FIND?', query
 		query = parse query
 		#console.log 'FIND!', query
@@ -173,7 +163,7 @@ class Store extends Database
 		query.meta.limit = 1 if query.terms.pk
 		query.meta.limit = @limit if @limit < query.meta.limit
 		deferred = defer()
-		super @collection, query.search, query.meta, (err, result) =>
+		super collection, query.search, query.meta, (err, result) =>
 			#console.log 'FOUND', arguments
 			return deferred.reject URIError err.message if err
 			result.forEach (doc) ->
@@ -184,148 +174,179 @@ class Store extends Database
 			#@emit 'find', result
 			deferred.resolve result
 		deferred.promise
-	findById: (id) ->
+	findById: (collection, id) ->
 		return null unless id
-		@find "id=#{id}"
-	stream: (query) ->
-		query = parse query
-		# limit the limit
-		query.meta.limit = @limit if @limit < query.meta.limit
-		query.meta.stream = true
+		@find collection, "id=#{id}"
+	patch: (collection, changes, query) ->
+		changes ?= {}
+		query = parse(query).search
+		query.$atomic = 1
 		deferred = defer()
-		# TODO: return forEachable -- a commonjs-utils lazy array?
-		super @collection, query.search, query.meta, (err, doc) ->
-			if err then deferred.reject err else deferred.resolve doc
+		#console.log 'MUPDATE?!', query, changes
+		# FIXME: how to $unset?!
+		Store.__super__.update.call @, collection, query, changes, (err, result) =>
+			return deferred.reject URIError err.message if err
+			deferred.resolve result
 		deferred.promise
-	mapReduce: (map, reduce) ->
-		deferred = defer()
-		super @collection, map, reduce, (err, result) ->
-			if err then deferred.reject URIError err.message else deferred.resolve result
-		deferred.promise
-	#
-	# get a frozen set of allowed methods to give safely to the consumer
-	#
-	# e.g.
-	#
-	#	facet = db.facet
-	#		insert: db.insert
-	#		top2: () ->
-	#			@select 'foo/bar!=0&sort(-date)&limit(2)&select(foo/bar)'
-	#
-	# if consumer has `facet` he can insert new documents or fetch top two
-	#	 documents which have foo.bar non-zero sorted by date desc
-	#	 and _no more_
-	#
-	facet: (exportedMethods) ->
-		Object.freeze Object.proxy @, exportedMethods
-	# allow CRUD plus exportedMethods
-	permissiveFacet: (exportedMethods) ->
-		#@facet insert: true, find: true, update: true, remove: true
-		#@facet ['insert', 'find', 'update', 'remove'] #.concat arguments
-		@facet ['find', 'save', 'remove', 'mupdate'] #.concat arguments
-	# allow only read plus exportedMethods
-	restrictiveFacet: (exportedMethods) ->
-		#@facet find: true
-		@facet ['find'] #.concat arguments
-	# get a Document
-	load: (id) ->
-		wait @findById(id), (properties) =>
-			@create properties
-	# create a new Document
-	create: (properties) ->
-		doc = new Document properties
-		store = @
-		#Object.defineProperties doc,
-		#	collection:
-		#		value: @restrictiveFacet()
-		_.mixin doc,
-			collection: @restrictiveFacet()
-		doc
-	# validate a Document
-	validateOnGet: (document) -> document
-	validateOnPut: (document, partial) -> document
 
+#########################################
+
+class Store extends Database
+	constructor: (options) ->
+		options ?= {}
+		options.hex ?= true
+		super options.name or 'test', options
+		#@options.host.replace /^mongodb:\/\/([^\/]+)/ # TODO
+	insert: (collection, document, next) ->
+		document ?= {}
+		if document.id
+			document._id = document.id
+			delete document.id
+		console.log 'INSERT?', collection, document
+		super collection, document, (err, result) =>
+			console.log 'INSERT!', arguments
+			return next URIError err.message if err
+			result.id = result._id
+			delete result._id
+			next null, result
+	update: (collection, document, next) ->
+		document ?= {}
+		id = document.id
+		delete document.id
+		console.log 'UPDATE?', collection, document
+		super collection, {_id: id}, {$set: document}, (err, result) =>
+			console.log 'UPDATE!', arguments
+			next null, null
+	save: (collection, document, next) ->
+		document ?= {}
+		if not document.id
+			# TODO: fill with defaults first?
+			@insert collection, document, next
+		else
+			@update collection, document, next
+	remove: (collection, query, next) ->
+		query = parse query
+		console.log 'REMOVE', collection, query
+		# fuser
+		return next TypeError 'Refused to remove the whole collection' unless Object.keys(query.search).length
+		super collection, query.search, (err, result) =>
+			return next URIError err.message if err
+			next null, result
+	find: (collection, query, next) ->
+		#console.log 'FIND?', query
+		query = parse query
+		#console.log 'FIND!', query
+		# limit the limit
+		query.meta.limit = 1 if query.terms.pk
+		query.meta.limit = @limit if @limit < query.meta.limit
+		super collection, query.search, query.meta, (err, result) =>
+			#console.log 'FOUND', arguments
+			return next URIError err.message if err
+			result.forEach (doc) ->
+				doc.id = doc._id
+				delete doc._id
+			if query.terms.pk
+				result = result[0] or null
+			next null, result
+	findById: (collection, id, next) ->
+		return next null, null unless id
+		@find collection, "id=#{id}", next
+	patch: (collection, changes, query, next) ->
+		changes ?= {}
+		query = parse(query).search
+		query.$atomic = 1
+		#console.log 'MUPDATE?!', query, changes
+		# FIXME: how to $unset?!
+		Store.__super__.update.call @, collection, query, changes, (err, result) =>
+			return next URIError err.message if err
+			next null, result
+
+db = new Store000000000000000000
+
+class Stor
+	constructor: (entity) ->
+		@find = db.find.bind db, entity
+		@findById = db.findById.bind db, entity
+		@insert = db.insert.bind db, entity
+		@update = db.update.bind db, entity
+		@save = db.save.bind db, entity
+		@remove = db.remove.bind db, entity
+		@drop = db.drop.bind db, entity
+
+class Collection
+	constructor: (@name) ->
+		Object.defineProperty @, 'db',
+			value: Object.freeze
+				find: db.find.bind db, @name
+				findById: db.findById.bind db, @name
+				insert: db.insert.bind db, @name
+				update: db.update.bind db, @name
+				save: db.save.bind db, @name
+				remove: db.remove.bind db, @name
+				drop: db.drop.bind db, @name
+		@docs = []
+	#create: (props) ->
+	#	@set props
+	get: (id) ->
+		wait @db.findById(id), (doc) =>
+			console.log 'LOADEDONE!', doc
+			new Document doc, name: @name
+		@
+	find: (query) ->
+		wait @db.find(query), (docs) =>
+			console.log 'LOADED!', docs
+			@set docs
+		@
+	set: (docs) ->
+		@docs = []
+		docs.forEach (doc) =>
+			@docs.push new Document doc, name: @name
+		#@emit 'change', @
+		@
 
 class Document
-	constructor: (properties) ->
-		properties ?= {}
-		Object.defineProperty @, '_props',
-			value: properties
-	get: (name) ->
-		@_props[name]
-	set: (changes, options) ->
-		now = @_props
-		changed = false
-		for prop, val of changes or {}
-			unless _.isEqual now[prop], val
-				now[prop] = val
-				changed = true
-				#if not options.silent
-				#	@emit 'change:' + attr, @, val, options
-		#if not options.silent and changed
-		#	@change options
-		@
-
-	beforeSave: () ->
-		@_props._version = if not @_props._version then 1 else @_props._version + 1
-		@
-	afterSave: () -> @
-	beforeRemove: () -> @
-	afterRemove: () -> @
-
-'''
-		@vetoRead = options.veto?.read or {}
-		@vetoWrite = options.veto?.write or {}
-	veto: (document, op) ->
-		if op is 'read'
-			document = Object.veto Object.clone(document), @vetoRead
-		else if op is 'write'
-			document = Object.veto Object.clone(document), @vetoWrite
-'''
-
-'''
-	return new DbCommand(db, @name + ".$cmd", 16, 0, -1, options, null);
-'''
-
-class Queue extends Store
-	constructor: (@collection, options) ->
-		super @collection, options
+	constructor: (@props, options) ->
 		options ?= {}
-		options =
-			create: @collection
-			capped: true
-			max: options.max or 2
-		@command 'create', options, (error, document) ->
-			if document and document.errmsg
-				if document.errmsg isnt 'collection already exists'
-					error = { code: document.code, message: document.errmsg }
-					throw error
-		@timeout = options.timeout or 3000
-	publish: (message) ->
-		@insert message: message
-	subscribe: (callback) ->
-		self = @
-		# get id of the latest document
-		wait @find("sort(-$natural)&limit(1)"), (latest) ->
-			latest = latest[0]?._id or ''
-			fetch = () ->
-				#console.log 'LATEST', latest
-				# get document with id > latest and don't close the connection
-				Store.__super__.find.call self, self.collection, {_id: {$gt: latest}}, {tailable: true}, (err, docs) ->
-					#console.log 'ERR', err, docs, self.connections.length
-					return if err
-					docs.forEach (doc) ->
-						latest = doc._id
-						callback doc #.message
-					if docs.length
-						process.nextTick fetch
-					else
-						setTimeout fetch, self.timeout
-			fetch()
+		options.name ?= 'Foo'
+		Object.defineProperty @, 'db',
+			value: Object.freeze
+				find: db.find.bind db, options.name
+				findById: db.findById.bind db, options.name
+				insert: db.insert.bind db, options.name
+				update: db.update.bind db, options.name
+				save: db.save.bind db, options.name
+				remove: db.remove.bind db, options.name
+		# TODO: defaults
+		@props ?= {}
+	set: (props) ->
+		return @ unless props
+		now = @props
+		changed = false
+		# TODO:
+		# return false unless validation
+		for k, v of props
+			unless _.isEqual now[k], v
+				now[k] = v
+				changed = true
+				#@emit "change:#{k}", v if changed
+		#@emit 'change', @ if changed
+		@
+	save: (props) ->
+		if @set props
+			console.log 'SAVE?', @props
+			@db.save _.clone(@props), (err, doc) =>
+				console.log 'SAVED!', arguments
+				@set doc
+		@
+	destroy: () ->
+		if @props.id
+			@db.remove "id=#{@props.id}", (err, doc) =>
+				console.log 'REMOVED!', arguments
+		@
 
 module.exports =
 	Database: Database
 	Store: Store
+	Stor: Stor
+	Collection: Collection
 	Document: Document
-	Queue: Queue
-

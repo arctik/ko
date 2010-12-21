@@ -1270,7 +1270,7 @@ if (!this.JSON) {
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
-  if (!_ && (typeof require !== 'undefined')) _ = require("underscore")._;
+  if (!_ && (typeof require !== 'undefined')) _ = require('underscore')._;
 
   // For Backbone's purposes, either jQuery or Zepto owns the `$` variable.
   var $ = this.jQuery || this.Zepto;
@@ -1393,6 +1393,7 @@ if (!this.JSON) {
     initialize : function(){},
 
     // Return a copy of the model's `attributes` object.
+    // DVV: toEscapedJSON() for efficient use in templates?
     toJSON : function() {
       return _.clone(this.attributes);
     },
@@ -1546,6 +1547,7 @@ if (!this.JSON) {
     // using Backbone's restful methods, override this to change the endpoint
     // that will be called.
     url : function() {
+      // DVV: URL
       var base = getUrl(this.collection) || this.urlRoot || urlError();
       if (this.isNew()) return base;
       return base + (base.charAt(base.length - 1) == '/' ? '' : '/') + this.id;
@@ -2191,7 +2193,7 @@ if (!this.JSON) {
     var modelJSON = null;
     if (model && (method === 'create' || method === 'update')) {
       if (model.toJSON) modelJSON = model.toJSON(); else modelJSON = model;
-      if (modeJSON && !_.isString(modelJSON)) modelJSON = JSON.stringify(modelJSON);
+      if (modelJSON && !_.isString(modelJSON)) modelJSON = JSON.stringify(modelJSON);
     }
 
     // Default JSON-request options.
@@ -2229,6 +2231,7 @@ if (!this.JSON) {
     // Make the request.
     $.ajax(params);
   };
+
 
   // Helpers
   // -------
@@ -2297,7 +2300,7 @@ if (!this.JSON) {
 
   // Helper function to escape a string for HTML rendering.
   var escapeHTML = function(string) {
-    return string.replace(/&(?!\w+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(string).replace(/&(?!\w+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
 
 }).call(this);
