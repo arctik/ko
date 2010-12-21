@@ -46,6 +46,7 @@ global.Step = (context, steps) ->
 # Object helpers
 #
 global._ = require 'underscore'
+global.B = require 'backbone'
 
 Object.apply = (o, props) ->
 	x = Object.create o

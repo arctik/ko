@@ -13,6 +13,65 @@ fs = require 'fs'
 
 run = require('./server').run
 Store = require('./store/store').Store
+Database = require('./store/store').Database
+
+
+db = new Database 'test', hex: true
+
+PermissiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		create: db.insert.bind db, entity
+		read: db.find.bind db, entity
+		update: db.update.bind db, entity
+		delete: db.remove.bind db, entity
+
+RestrictiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		read: db.find.bind db, entity
+
+B.sync = (method, model, options) ->
+	[entity, id] = model.url().split '/'
+	data = model.toJSON()
+	if method is 'read'
+		db.find entity, (err, result) ->
+			console.log "READ #{entity} #{id}", arguments
+			if err then options.error err else options.success result
+	else if method is 'update'
+		db.modify entity, {query: {_id: data.id}, update: data, new: true}, (err, result) ->
+			console.log "UPDATE #{entity} #{id}", arguments
+			if err then options.error err else options.success result
+	else if method is 'create'
+		db.insert entity, data, (err, result) ->
+			console.log "CREATE #{entity} #{id}", arguments
+			if err then options.error err else options.success result
+	else if method is 'delete'
+		db.remove entity, {_id: data.id}, (err, result) ->
+			console.log "DELETE #{entity} #{id}", arguments
+			if err then options.error err else options.success result
+
+'''
+global.Bar = B.Collection.extend
+	sync: (method, model, options) ->
+		entity = 'Bar'
+		if method is 'read'
+			db.find entity, (err, result) ->
+				console.log "READ #{entity}", arguments
+				if err then options.error err else options.success result
+		else if method is 'update'
+			db.update entity, (err, result) -> if err then options.error err else options.success result
+		else if method is 'create'
+			db.insert entity, (err, result) -> if err then options.error err else options.success result
+		else if method is 'delete'
+			db.remove entity, (err, result) -> if err then options.error err else options.success result
+'''
+
+#Bar = new B.Collection(); Bar.url = function(){return 'Bar'}; Bar.fetch({success:console.log})
+
+global.f =
+	Bar: PermissiveFacet 'Bar'
+	Session: RestrictiveFacet 'Session'
 
 facets =
 	public: {}
@@ -188,14 +247,14 @@ wait waitAllKeys(model), (_facets) ->
 							value: (value) ->
 								#console.log 'SESSOUT' + sid, value
 								options = {path: '/', httpOnly: true}
-								if not sid and value
+								if value
 									# user logged in --> store new session and set the cookie
 									sid = value.id
 									options.expires = value.expires if value.expires
 									#console.log 'MAKESESS', value
 									model.Session.insert value
 									res.setSecureCookie 'sid', sid, options
-								else if sid and not value
+								else
 									# user logged out --> remove the session and the cookie
 									#console.log 'REMOVESESS'
 									model.Session.remove id: sid

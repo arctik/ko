@@ -77,6 +77,8 @@ module.exports = (options) ->
 				#console.log 'RQRY', query
 				# FIXME: ?sum(value) returns a number, which is treated as status code!
 				x = filterArray query, {}, arr
+				if query.normalize().pk
+					x = x[0] or null
 				#console.log 'RESULT', x, x.totalCount, arr
 				x
 			if _cache

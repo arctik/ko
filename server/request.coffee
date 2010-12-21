@@ -84,7 +84,9 @@ http.IncomingMessage::parseBody = () ->
 		# Backbone.emulateJSON compat:
 		# if 'application/x-www-form-urlencoded' --> reparse 'model' key to be the final params
 		if self.headers['content-type'] is 'application/x-www-form-urlencoded'
-			self.params = JSON.parse self.params.model
+			delete self.params._method
+			console.log 'BACKBONE?', self.params
+			self.params = JSON.parse(self.params.model || '{}')
 		deferred.resolve self
 	form.parse self
 	deferred.promise

@@ -144,7 +144,7 @@ Cursus est risus hendrerit et <br>
 	</script>
 
 	<script id="tmpl-list" type="text/x-jquery-tmpl">
-		<div class="leftMenu grid_3 alpha">Actions</div>
+		<div class="list-actions grid_3 alpha">Actions</div>
 		<div class="list grid_10">
 			<select class="actions">
 				<option></option>
@@ -152,62 +152,60 @@ Cursus est risus hendrerit et <br>
 				<option value="none">None</option>
 				<option value="toggle">Toggle</option>
 			</select>
-			<form action="/<%=name%>">
-				<table id="list-<%=name%>">
-					<thead>
-						<tr>
-							<th></th>
-							<% _.each(props, function(prop){ %>
-							<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
-							<% }); %>
-						</tr>
-						<tr>
-							<th></th>
-							<% _.each(props, function(prop){ %>
-							<th>
-								<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
-							</th>
-							<% }); %>
-						</tr>
-					</thead>
-					<tbody><% _.each(items, function(item){ %>
-						<tr rel="<%=item.id%>">
-							<td class="actions"><input type="checkbox" class="action-select" /></td>
-							<% _.each(props, function(prop){ %>
-							<td>
-								<% if (prop.name === 'id') { %>
-									<a href="#form:<%=name%>/<%=item.id%>"><%=item.id%></a>
-								<% } else { %>
-									<%=item[prop.name]%>
-								<% } %>
-							</td>
-							<% }); %>
-						</tr>
-					<% }); %></tbody>
-					<tfoot></tfoot>
-				</table>
-				<button data-bind="click: removeSelected">Delete</button>
-				<button data-bind="click: addNew">Add new</button>
-			</form>
+			<table id="list-<%=name%>">
+				<thead>
+					<tr>
+						<th></th>
+						<% _.each(props, function(prop){ %>
+						<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
+						<% }); %>
+					</tr>
+					<tr>
+						<th><input type="checkbox" class="action-select-all" /></th>
+						<% _.each(props, function(prop){ %>
+						<th>
+							<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
+						</th>
+						<% }); %>
+					</tr>
+				</thead>
+				<tbody class="action-select-list"><% _.each(items, function(item){ %>
+					<tr class="action-select-row" rel="<%=item.id%>">
+						<td class="actions"><input type="checkbox" class="action-select" /></td>
+						<% _.each(props, function(prop){ %>
+						<td>
+							<% if (prop.name === 'id') { %>
+								<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=item.id%></a>
+							<% } else { %>
+								<%=item[prop.name]%>
+							<% } %>
+						</td>
+						<% }); %>
+					</tr>
+					<tr class="action-edit-row" style="display: none;">
+						<td></td>
+						<td colspan="<%=props.length%>"><%=JSON.stringify(item)%></td>
+					</tr>
+				<% }); %></tbody>
+				<tfoot></tfoot>
+			</table>
+			<button class="action-remove">Delete</button>
+			<button class="action-add">Add new</button>
 			<div>
 				Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
 			</div>
 <div class="pager">
-<a href="javascript:void(0)" class="page-first">First</a>
 <a href="javascript:void(0)" class="page-prev">Prev</a>
 <a href="javascript:void(0)" class="page-next">Next</a>
-<a href="javascript:void(0)" class="page-last">Last</a>
 <select class="action-limit">
 	<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
 	<option value="10">10</option>
 	<option value="25">25</option>
 	<option value="50">50</option>
-	<option value="100">100</option>
-	<option value="200">200</option>
 </select>
 </div>
 		</div>
-		<div class="rightMenu grid_3 omega">Filters</div>
+		<div class="list-item-inspector grid_3 omega">INSPECTOR</div>
 	</script>
 
 </body>

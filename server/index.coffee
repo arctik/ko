@@ -190,7 +190,7 @@ handlerFactory = (app, before, after) ->
 				# get session
 				app.getSession req, res
 			(session) ->
-				#console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
+				console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
 				# run REST handler
 				method = req.method
 				path = req.location.pathname
@@ -201,13 +201,13 @@ handlerFactory = (app, before, after) ->
 				parts = path.substring(1).split '/'
 				model = Object.drillDown session.context, parts
 				# bail out unless the handler is determined
-				unless model
+				unless model or search
 					return null if parts.length isnt 2
 					# /Foo/bar --> try to mangle to /Foo?id=bar
 					model = Object.drillDown session.context, [parts[0]]
+					#console.log 'PARTS', parts, model
 					return null unless model
-					search += '&' if search
-					search += 'id=' + parts[1]
+					search = 'id=' + parts[1]
 				# parse query
 				# N.B. sometimes we want to pass bulk parameters, say ids to DELETE
 				#   we may do it as follows: POST /Foo?in(id,$1) x-http-method-override: delete {queryParameters: [[id1,id2,...]]}
@@ -218,6 +218,7 @@ handlerFactory = (app, before, after) ->
 					queryParameters = data.queryParameters #.map (param) -> RQL.converters.default param
 					data = data.data or {}
 				query = parseQuery search, queryParameters
+				console.log 'QUERY', query
 				return URIError query.error if query.error
 				# determine handler parameters
 				# N.B. we rely on exceptions being catched
@@ -248,7 +249,7 @@ handlerFactory = (app, before, after) ->
 				else
 					return 405 # ReferenceError?
 			(response) ->
-				#console.log "RESPONSE for #{req.url}", arguments
+				console.log "RESPONSE for #{req.url}", arguments
 				# send the response
 				res.send response
 				# handle post-process

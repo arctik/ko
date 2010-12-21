@@ -2,7 +2,8 @@
 
 #dvv/schema.js:schema
 #akidee/underscorex:underscorex
-#documentcloud/underscore:underscore
+#SteveSanderson/knockout/build/output/knockout-latest.debug.js:knockout.js
+#SteveSanderson/knockout.mapping/build/output/knockout.mapping-latest.debug.js:knockout.mapping.js
 
 deps='
 cloudhead/eyes.js/lib/eyes.js:eyes.js
@@ -10,10 +11,8 @@ kriszyp/promised-io/lib:promised-io
 kriszyp/compose/lib/compose.js:compose.js
 documentcloud/underscore/underscore.js:underscore.js
 douglascrockford/JSON-js/json2.js:json2.js
-documentcloud/backbone/backbone.js:backbone.js
+dvv/backbone/backbone.js:backbone.js
 jquery/jquery-tmpl/jquery.tmpl.js:jquery.tmpl.js
-SteveSanderson/knockout/build/output/knockout-latest.debug.js:knockout.js
-SteveSanderson/knockout.mapping/build/output/knockout.mapping-latest.debug.js:knockout.mapping.js
 dvv/rql/lib:rql
 dvv/node-formidable/lib/formidable:formidable
 maqr/node-xml2js/lib:xml2js

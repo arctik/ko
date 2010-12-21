@@ -1362,8 +1362,12 @@ if (!this.JSON) {
   // Create a new model, with defined attributes. A client id (`cid`)
   // is automatically generated and assigned for you.
   Backbone.Model = function(attributes, options) {
+    var defaults;
     attributes || (attributes = {});
-    if (this.defaults) attributes = _.extend({}, this.defaults, attributes);
+    if (defaults = this.defaults) {
+      if (_.isFunction(defaults)) defaults = defaults();
+      attributes = _.extend({}, defaults, attributes);
+    }
     this.attributes = {};
     this._escapedAttributes = {};
     this.cid = _.uniqueId('c');
@@ -2184,12 +2188,15 @@ if (!this.JSON) {
   // it difficult to read the body of `PUT` requests.
   Backbone.sync = function(method, model, options) {
     var type = methodMap[method];
-    var modelJSON = (method === 'create' || method === 'update') ?
-                    JSON.stringify(model.toJSON()) : null;
+    var modelJSON = null;
+    if (model && (method === 'create' || method === 'update')) {
+      if (model.toJSON) modelJSON = model.toJSON(); else modelJSON = model;
+      if (modeJSON && !_.isString(modelJSON)) modelJSON = JSON.stringify(modelJSON);
+    }
 
     // Default JSON-request options.
     var params = _.extend({
-      url:          getUrl(model) || urlError(),
+      url:          getUrl(model),
       type:         type,
       contentType:  'application/json',
       data:         modelJSON,
@@ -2197,11 +2204,14 @@ if (!this.JSON) {
       processData:  false
     }, options);
 
+    // Check for URL
+    params.url || urlError();
+
     // For older servers, emulate JSON by encoding the request into an HTML-form.
     if (Backbone.emulateJSON) {
       params.contentType = 'application/x-www-form-urlencoded';
       params.processData = true;
-      params.data        = modelJSON ? {model : modelJSON} : {};
+      params.data        = params.data ? {model : params.data} : {};
     }
 
     // For older servers, emulate HTTP by mimicking the HTTP method with `_method`
