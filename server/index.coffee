@@ -185,7 +185,7 @@ handlerFactory = (app, before, after) ->
 		wid = process.env._WID_
 
 		# process request
-		Step {}, [
+		Step {foo:'bar'}, [
 			() ->
 				# get session
 				app.getSession req, res
@@ -218,7 +218,7 @@ handlerFactory = (app, before, after) ->
 					queryParameters = data.queryParameters #.map (param) -> RQL.converters.default param
 					data = data.data or {}
 				query = parseQuery search, queryParameters
-				console.log 'QUERY', query
+				#console.log 'QUERY', query
 				return URIError query.error if query.error
 				# determine handler parameters
 				# N.B. we rely on exceptions being catched
@@ -226,6 +226,7 @@ handlerFactory = (app, before, after) ->
 					# TODO: elaborate on method and data
 					# FIXME: move to POST handler?
 					# FIXME: passing context is good?
+					console.log 'DIRECTCALL', model, this
 					model data, method, session
 				else if method is 'GET'
 					model.find query
@@ -242,7 +243,7 @@ handlerFactory = (app, before, after) ->
 					# copy properties?
 					else if search
 						delete data.id # id is constant!
-						model.mupdate {$set: data}, query
+						model.patch {$set: data}, query
 					# mimic PUT
 					else
 						model.save data

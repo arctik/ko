@@ -3,8 +3,6 @@
 Database = require('mongo').Database
 ObjectID = require('mongo').ObjectID
 
-Compose = require 'compose'
-
 #
 # RQL
 #
@@ -97,9 +95,9 @@ parse = (query) ->
 	meta: options, search: search, terms: query
 
 #
-# Storage
+# Store
 #
-class Storage extends Database
+class Store000000000000000000 extends Database
 	constructor: (options) ->
 		options ?= {}
 		options.hex ?= true
@@ -127,7 +125,7 @@ class Storage extends Database
 		deferred = defer()
 		#console.log 'UPDATE?', document
 		# TODO: _deleted: true --> means remove!
-		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true, upsert: true}, (err, result) =>
+		Store.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true}, (err, result) =>
 			#console.log 'UPDATE!', arguments
 			return deferred.reject null if err
 			result.id = result._id
@@ -146,7 +144,7 @@ class Storage extends Database
 		deferred = defer()
 		# fuser
 		#console.log 'REM', query
-		throw TypeError 'Refused to remove the whole collection. Use drop() instead' unless Object.keys(query.search).length
+		throw TypeError 'Refused to remove the whole collection' unless Object.keys(query.search).length
 		super collection, query.search, (err, result) =>
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
@@ -158,7 +156,7 @@ class Storage extends Database
 			deferred.resolve result
 		deferred.promise
 	find: (collection, query) ->
-		console.log 'FIND?', query
+		#console.log 'FIND?', query
 		query = parse query
 		#console.log 'FIND!', query
 		# limit the limit
@@ -176,8 +174,7 @@ class Storage extends Database
 			#@emit 'find', result
 			deferred.resolve result
 		deferred.promise
-	# TODO: findOne
-	get: (collection, id) ->
+	findById: (collection, id) ->
 		return null unless id
 		@find collection, "id=#{id}"
 	patch: (collection, changes, query) ->
@@ -187,67 +184,184 @@ class Storage extends Database
 		deferred = defer()
 		#console.log 'MUPDATE?!', query, changes
 		# FIXME: how to $unset?!
-		Storage.__super__.update.call @, collection, query, changes, (err, result) =>
+		Store.__super__.update.call @, collection, query, changes, (err, result) =>
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
 		deferred.promise
 
 #########################################
 
-db = new Storage
-
-# TODO: select(read/write) should be here!
-Store = (entity) ->
-	find: db.find.bind db, entity
-	get: db.get.bind db, entity
-	save: db.save.bind db, entity
-	add: db.insert.bind db, entity
-	remove: db.remove.bind db, entity
-	update: db.update.bind db, entity
-	patch: db.patch.bind db, entity
-	drop: db.drop.bind db, entity
-	#count???: db.count.bind db, entity
-
-Model = (entity, overrides) ->
-	Compose.create Store(entity), overrides
-#Model = (entity, overrides...) ->
-#	Compose.create.apply Compose, Store(entity), overrides
-
-'''
-class Collection
-	constructor: (entity) ->
-		#Collection.__super__.__proto__ = Store(entity)
-		#@__proto__ = Store(entity)
-		#p(T.__proto__.find())
-		Compose.call Store(entity), @
-	find: (query) ->
-		console.log 'FINDINTERCEPTED!'
-		#super (query or '') + '&a!=null'
-		@__proto__.find (query or '') + '&a!=null'
-
-class Model
-	constructor: (entity, options) ->
+class Store extends Database
+	constructor: (options) ->
 		options ?= {}
-		@db = Object.freeze Store entity
-		#@read = options.validate.read if options.validate.read
-		#@write = options.write if options.write
-	find: () -> @db.find.apply @, arguments
-	get: () -> @db.get.apply @, arguments
-	#get: () ->
-	#	wait @db.get.apply(@, arguments), (doc) =>
-	#		if doc
-	#			console.log 'FILTER', "select(#{@read})"
-	#			doc = filterArray "select(#{@read})", {}, [doc]
-	add: () -> @db.add.apply @, arguments
-	#update: () -> @db.update.apply @, arguments
-	save: () -> @db.save.apply @, arguments
-	remove: () -> @db.remove.apply @, arguments
-	patch: () -> @db.patch.apply @, arguments
-	#drop: () -> @db.drop.apply @, arguments
-'''
+		options.hex ?= true
+		super options.name or 'test', options
+		#@options.host.replace /^mongodb:\/\/([^\/]+)/ # TODO
+	insert: (collection, document, next) ->
+		document ?= {}
+		if document.id
+			document._id = document.id
+			delete document.id
+		console.log 'INSERT?', collection, document
+		super collection, document, (err, result) =>
+			console.log 'INSERT!', arguments
+			return next URIError err.message if err
+			result.id = result._id
+			delete result._id
+			next null, result
+	update: (collection, document, next) ->
+		document ?= {}
+		id = document.id
+		delete document.id
+		console.log 'UPDATE?', collection, document
+		super collection, {_id: id}, {$set: document}, (err, result) =>
+			console.log 'UPDATE!', arguments
+			next null, null
+	save: (collection, document, next) ->
+		document ?= {}
+		if not document.id
+			# TODO: fill with defaults first?
+			@insert collection, document, next
+		else
+			@update collection, document, next
+	remove: (collection, query, next) ->
+		query = parse query
+		console.log 'REMOVE', collection, query
+		# fuser
+		return next TypeError 'Refused to remove the whole collection' unless Object.keys(query.search).length
+		super collection, query.search, (err, result) =>
+			return next URIError err.message if err
+			next null, result
+	find: (collection, query, next) ->
+		#console.log 'FIND?', query
+		query = parse query
+		#console.log 'FIND!', query
+		# limit the limit
+		query.meta.limit = 1 if query.terms.pk
+		query.meta.limit = @limit if @limit < query.meta.limit
+		super collection, query.search, query.meta, (err, result) =>
+			#console.log 'FOUND', arguments
+			return next URIError err.message if err
+			result.forEach (doc) ->
+				doc.id = doc._id
+				delete doc._id
+			if query.terms.pk
+				result = result[0] or null
+			next null, result
+	findById: (collection, id, next) ->
+		return next null, null unless id
+		@find collection, "id=#{id}", next
+	patch: (collection, changes, query, next) ->
+		changes ?= {}
+		query = parse(query).search
+		query.$atomic = 1
+		#console.log 'MUPDATE?!', query, changes
+		# FIXME: how to $unset?!
+		Store.__super__.update.call @, collection, query, changes, (err, result) =>
+			return next URIError err.message if err
+			next null, result
+
+db = new Store000000000000000000
+
+class Stor
+	constructor: (entity, expose) ->
+		@find = db.find.bind db, entity
+		@findById = db.findById.bind db, entity
+		@insert = db.insert.bind db, entity
+		@update = db.update.bind db, entity
+		@save = db.save.bind db, entity
+		@remove = db.remove.bind db, entity
+		@drop = db.drop.bind db, entity
+
+class Collection
+	constructor: (@name) ->
+		Object.defineProperty @, 'db',
+			value: Object.freeze
+				find: db.find.bind db, @name
+				findById: db.findById.bind db, @name
+				insert: db.insert.bind db, @name
+				update: db.update.bind db, @name
+				save: db.save.bind db, @name
+				remove: db.remove.bind db, @name
+				drop: db.drop.bind db, @name
+		@docs = []
+	#create: (props) ->
+	#	@set props
+	get: (id) ->
+		wait @db.findById(id), (doc) =>
+			console.log 'LOADEDONE!', doc
+			new Document doc, name: @name
+		@
+	find: (query) ->
+		wait @db.find(query), (docs) =>
+			console.log 'LOADED!', docs
+			@set docs
+		@
+	set: (docs) ->
+		@docs = []
+		docs.forEach (doc) =>
+			@docs.push new Document doc, name: @name
+		#@emit 'change', @
+		@
+
+class Document
+	constructor: (@props, options) ->
+		options ?= {}
+		options.name ?= 'Foo'
+		Object.defineProperty @, 'db',
+			value: Object.freeze
+				find: db.find.bind db, options.name
+				findById: db.findById.bind db, options.name
+				insert: db.insert.bind db, options.name
+				update: db.update.bind db, options.name
+				save: db.save.bind db, options.name
+				remove: db.remove.bind db, options.name
+		# TODO: defaults
+		@props ?= {}
+	set: (props) ->
+		return @ unless props
+		now = @props
+		changed = false
+		# TODO:
+		# return false unless validation
+		for k, v of props
+			unless _.isEqual now[k], v
+				now[k] = v
+				changed = true
+				#@emit "change:#{k}", v if changed
+		#@emit 'change', @ if changed
+		@
+	save: (props) ->
+		if @set props
+			console.log 'SAVE?', @props
+			@db.save _.clone(@props), (err, doc) =>
+				console.log 'SAVED!', arguments
+				@set doc
+		@
+	destroy: () ->
+		if @props.id
+			@db.remove "id=#{@props.id}", (err, doc) =>
+				console.log 'REMOVED!', arguments
+		@
+
+
+PermissiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		create: db.insert.bind db, entity
+		read: db.find.bind db, entity
+		update: db.update.bind db, entity
+		delete: db.remove.bind db, entity
+
+RestrictiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		read: db.find.bind db, entity
+
 
 module.exports =
-	#Database: Database
-	#Store: Store
-	Model: Model
-	#Collection: Collection
+	Database: Database
+	Store: Store
+	Stor: Stor
+	Collection: Collection
+	Document: Document

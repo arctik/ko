@@ -4,7 +4,7 @@
 # improve console.log
 #
 sys = require 'util'
-inspect = require('eyes.js').inspector {stream: null}
+inspect = require('eyes.js').inspector stream: null
 oldConsoleLog = console.log
 console.log = () ->
 	for arg in arguments
@@ -158,6 +158,9 @@ global.CustomError = (message, props) ->
 #global.drillDown = require('rql/js-array').evaluateProperty
 global.parseQuery = require('rql/parser').parseGently
 global.filterArray = require('rql/js-array').executeQuery
+_.mixin
+	query: (arr, query, params) ->
+		filterArray query, params or {}, arr
 
 Object.drillDown = (o, property) ->
 	if property instanceof Array

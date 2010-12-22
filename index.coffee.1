@@ -2,6 +2,8 @@
 
 require.paths.unshift __dirname + '/lib/node'
 
+#require 'underscore'
+
 # TODO: make 'development' come from environment
 settings = require('./config').development
 Object.defineProperty global, 'settings',
@@ -10,23 +12,99 @@ Object.defineProperty global, 'settings',
 fs = require 'fs'
 
 run = require('./server').run
-Model = require('./store/store').Model
+Store = require('./store/store').Store
+Database = require('./store/store').Database
+global.Stor = require('./store/store').Stor
+global.Collection = require('./store/store').Collection
+global.Document = require('./store/store').Document
+global.Backbone = require 'backbone'
 
-PermissiveFacet = (model, methods...) ->
-	r =
-		find: model.find?.bind model
-		get: model.get?.bind model
-		add: model.add?.bind model
-		save: model.save?.bind model
-		remove: model.remove?.bind model
-	methods.forEach (m) ->
-		r[m] = model[m]?.bind model
-	r
+db = new Database 'test', hex: true
 
-RestrictiveFacet = (model, methods...) ->
-	r =
-		find: model.find?.bind model
-		get: model.get?.bind model
+PermissiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		create: db.insert.bind db, entity
+		read: db.find.bind db, entity
+		update: db.update.bind db, entity
+		delete: db.remove.bind db, entity
+
+RestrictiveFacet = (entity) ->
+	r = {}
+	r[entity] =
+		read: db.find.bind db, entity
+
+Backbone.sync = (method, model, options) ->
+	entity = model.entity
+	id = model.id
+	data = model.toJSON()
+	if method is 'read'
+		search = {}
+		search._id = id if id
+		db.find entity, search, (err, result) ->
+			console.log "READ #{entity} #{id}", arguments
+			if err
+				options.error err
+			else
+				result.forEach (doc) ->
+					doc.id = doc._id
+					delete doc._id
+				if id
+					result = result[0] or null
+				options.success result
+	else if method is 'update'
+		if id
+			data._id = id
+			delete data.id
+		db.modify entity, {query: {_id: id}, update: data, new: true}, (err, result) ->
+			console.log "UPDATE #{entity} #{id}", arguments
+			if err
+				options.error err
+			else
+				result.id = result._id
+				delete result._id
+				options.success result
+	else if method is 'create'
+		#if id
+		#	data._id = id
+		#	delete data.id
+		db.insert entity, data, (err, result) ->
+			console.log "CREATE #{entity} #{id}", arguments
+			if err
+				options.error err
+			else
+				result.id = result._id
+				delete result._id
+				options.success result
+	else if method is 'delete'
+		db.remove entity, {_id: data.id}, (err, result) ->
+			console.log "DELETE #{entity} #{id}", arguments
+			if err then options.error err else options.success result
+
+'''
+global.Bar = B.Collection.extend
+	sync: (method, model, options) ->
+		entity = 'Bar'
+		if method is 'read'
+			db.find entity, (err, result) ->
+				console.log "READ #{entity}", arguments
+				if err then options.error err else options.success result
+		else if method is 'update'
+			db.update entity, (err, result) -> if err then options.error err else options.success result
+		else if method is 'create'
+			db.insert entity, (err, result) -> if err then options.error err else options.success result
+		else if method is 'delete'
+			db.remove entity, (err, result) -> if err then options.error err else options.success result
+'''
+
+#Bar = new B.Collection(); Bar.url = function(){return 'Bar'}; Bar.fetch({success:console.log})
+
+global.BarM = Backbone.Model.extend
+	entity: 'Bar'
+
+global.f =
+	Bar: PermissiveFacet 'Bar'
+	Session: RestrictiveFacet 'Session'
 
 facets =
 	public: {}
@@ -35,36 +113,42 @@ facets =
 
 model = {}
 
-model.Bar = Model 'Bar',
-	find: (query) ->
-		console.log 'FINDINTERCEPTED!'
-		# TODO: sugar?
-		@__proto__.find (query or '') + '&a!=null'
-	foos1: () -> @find "foo!=null"
+class Facet
+	constructor: (@store) ->
 
-#model.Bar1 = Compose
+model.Foo = new Store 'Foo'
+
+class BarModel extends Store
+	constructor: () -> super 'Bar'
+	#remove: null # BAD: also internally disabled
+	top2: () -> @find 'foo/bar!=0&sort(-date)&limit(2)&select(foo/bar)'
+
+model.Bar = new BarModel
 
 encryptPassword: (password, salt) ->
 	sha1(salt + password + settings.security.secret)
 
-model.User = Model 'User',
-	get: (id) ->
+class UserModel extends Store
+	constructor: () ->
+		super 'User'
+	findById: (id) ->
+		# FIXME: undefined strikes bson?!
 		return null unless id
-		wait @__proto__.get(id), (user) ->
+		wait UserModel.__super__.findById.call(@, id), (user) ->
 			if not user
 				user = settings.security.admins[id] or null
 			user
 	signup: (data, method, context) ->
 		return null unless method is 'POST'
 		data ?= {}
-		wait @add({id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
+		wait @insert({id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
 			console.log 'USER', user
 			user
 	login: (data, method, context) ->
 		return null unless method is 'POST'
 		#console.log 'LOGIN', arguments
 		data ?= {}
-		wait @get(data.user), (user) =>
+		wait @findById(data.user), (user) =>
 			if not user
 				if data.user
 					# invalid user
@@ -94,8 +178,17 @@ model.User = Model 'User',
 				else
 					context.save null
 					false
+	prototype:
+		ppp: () -> if 1 is 0 then false else true
 
-model.Session = Model 'Session'
+model.User = new UserModel
+
+class SessionModel extends Store
+	constructor: () ->
+		super 'Session'
+
+model.Session = new SessionModel
+#model.Session = new Store('Session')
 
 model.Course = require('./store/remote')()
 
@@ -144,17 +237,23 @@ class WebRootUser extends WebRootPublic
 
 class WebRootAdmin extends WebRootUser
 	Foo: model.Foo
-	Bar: PermissiveFacet model.Bar, 'foos1'
-	Course: PermissiveFacet model.Course, 'find', 'get'
+	Bar: _.bindAll model.Bar, 'find', 'findById', 'save', 'mupdate', 'remove', 'top2'
+	Course: _.bindAll model.Course, 'find', 'findById'
 
 facets.public = new WebRootPublic()
 facets.user = new WebRootUser()
 facets.admin = new WebRootAdmin()
 
-# TODO: remove from global
 global.model = model
 global.facets = facets
 
+
+##################################
+
+global.Collection = Collection
+global.Document = Document
+global.B = new Collection 'Bar'
+#global.b = B.create foo: 123
 
 ############################
 
@@ -182,9 +281,8 @@ wait waitAllKeys(model), (_facets) ->
 				context
 		getSession:
 			value: (req, res) ->
-				# TODO: unclosure to be in Session prototype?
 				sid = req.getSecureCookie 'sid'
-				wait model.Session.get(sid), (session) =>
+				wait model.Session.findById(sid), (session) =>
 					session ?= id: sid, user: {}
 					#console.log 'SESSIN!' + sid, session
 					Object.defineProperties session,
@@ -197,7 +295,7 @@ wait waitAllKeys(model), (_facets) ->
 									sid = value.id
 									options.expires = value.expires if value.expires
 									#console.log 'MAKESESS', value
-									model.Session.add value
+									model.Session.insert value
 									res.setSecureCookie 'sid', sid, options
 								else
 									# user logged out --> remove the session and the cookie
@@ -220,3 +318,7 @@ wait waitAllKeys(model), (_facets) ->
 								context = facets[level] or {}
 		#handler: handler
 	run app
+
+
+
+

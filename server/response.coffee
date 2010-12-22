@@ -25,6 +25,9 @@ http.ServerResponse::send = (body, headers, status) ->
 			body = body.message
 		else if body instanceof TypeError
 			body = 403
+		else if body instanceof SyntaxError
+			status = 406
+			body = body.message
 		#else if body instanceof RangeError
 		#	body = 405
 		else

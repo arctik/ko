@@ -86,13 +86,13 @@ module.exports = (options) ->
 			else
 				wait fetch(), () -> store.find query
 
-		findById: (id) ->
+		get: (id) ->
 			if _cache
 				if _cache[id]
 					{id: id, value: _cache[id]}
 				else
 					null
 			else
-				wait fetch(), () -> store.findById id
+				wait fetch(), () -> store.get id
 
 	Object.freeze store
