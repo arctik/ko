@@ -11,6 +11,7 @@ fs = require 'fs'
 
 run = require('./server').run
 Model = require('./store/store').Model
+Compose = require 'compose'
 
 PermissiveFacet = (model, methods...) ->
 	r =
@@ -36,10 +37,19 @@ facets =
 model = {}
 
 model.Bar = Model 'Bar',
-	find: (query) ->
+	find1: (query) ->
 		console.log 'FINDINTERCEPTED!'
 		# TODO: sugar?
 		@__proto__.find (query or '') + '&a!=null'
+	#find: Compose.around (base) ->
+	#	(query) ->
+	#		console.log 'BEFOREFIND', arguments
+	#		r = base.call @, (query or '') + '&a!=null'
+	#		console.log 'AFTERFIND', r
+	#		r
+	find: Compose.before (query) ->
+		console.log 'BEFOREFIND', arguments
+		[(query or '') + '&a!=null']
 	foos1: () -> @find "foo!=null"
 
 #model.Bar1 = Compose
