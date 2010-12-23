@@ -11,6 +11,7 @@ fs = require 'fs'
 
 run = require('./server').run
 Model = require('./store/store').Model
+Facet = require('./store/store').Facet
 Compose = require 'compose'
 
 PermissiveFacet = (model, methods...) ->
@@ -36,26 +37,45 @@ facets =
 
 model = {}
 
+######################################
+################### Tests
+######################################
+
 model.Bar = Model 'Bar',
 	find1: (query) ->
 		console.log 'FINDINTERCEPTED!'
 		# TODO: sugar?
 		@__proto__.find (query or '') + '&a!=null'
-	#find: Compose.around (base) ->
-	#	(query) ->
-	#		console.log 'BEFOREFIND', arguments
-	#		r = base.call @, (query or '') + '&a!=null'
-	#		console.log 'AFTERFIND', r
-	#		r
-	find: Compose.before (query) ->
-		console.log 'BEFOREFIND', arguments
-		[(query or '') + '&a!=null']
+	find: Compose.around (base) ->
+		(query) ->
+			console.log 'BEFOREFIND', arguments
+			wait base.call(@, (query or '') + '&a!=null'), (result) ->
+				result.forEach (doc) ->
+					doc._version = 2
+					doc = Object.veto doc, ['id'] 
+				console.log 'AFTERFIND', result
+				result
+	#find: Compose.before (query) ->
+	#	console.log 'BEFOREFIND', arguments
+	#	[(query or '') + '&a!=null']
+	#find: Compose.after (promise) ->
+	#	console.log 'AFTERFIND', arguments
+	#	promise
 	foos1: () -> @find "foo!=null"
 
-#model.Bar1 = Compose
+model.Bar1 = Facet model.Bar, ['find']
 
-encryptPassword: (password, salt) ->
+######################################
+################### User
+######################################
+
+encryptPassword = (password, salt) ->
 	sha1(salt + password + settings.security.secret)
+
+# secure admin accounts
+for k, v of settings.security.admins
+	v.salt = nonce()
+	v.password = encryptPassword v.password, v.salt
 
 model.User = Model 'User',
 	get: (id) ->
@@ -64,12 +84,47 @@ model.User = Model 'User',
 			if not user
 				user = settings.security.admins[id] or null
 			user
-	signup: (data, method, context) ->
+	add: null
+	update: null
+	save: null
+	remove: (query) ->
+		@patch query, active: false, _deleted: true
+	drop: null
+	patch: (query, changes) ->
+		return URIError 'Please be more specific' unless query
+		id = parseQuery(query).normalize().pk
+		return URIError 'Can not set passwords in bulk' if changes.password isnt undefined and not id
+		#return URIError 'Use signup to create new user' unless user.id
+		if changes.password
+			# TODO: password changed, notify the user
+			# TODO: notify only if changed OK!
+			# create salt, hash salty password
+			changes.salt = nonce()
+			console.log 'PASSWORD SET TO', changes.password
+			changes.password = encryptPassword changes.password, changes.salt
+		# TODO: limit access rights in changes not higher than of current user
+		@__proto__.patch query, changes
+	signup: (data, method, session) ->
 		return null unless method is 'POST'
 		data ?= {}
-		wait @add({id: data.user, password: data.pass, email: 'foo@bar.baz', active: true}), (user) =>
-			console.log 'USER', user
-			user
+		Step @, [
+			() ->
+				@get data.user
+			(user) ->
+				return SyntaxError 'Already exists' if user
+				# TODO: password set, notify the user
+				# TODO: notify only if added OK!
+				# create salt, hash salty password
+				salt = nonce()
+				console.log 'PASSWORD SET TO', data.pass
+				password = encryptPassword data.pass, salt
+				#console.log 'HERE', salt, password
+				# TODO: activation!
+				@__proto__.add id: data.user, password: password, salt: salt, email: data.email, regDate: Date.now(), active: true
+			(user) ->
+				#console.log 'USER', user
+				user
+		]
 	login: (data, method, context) ->
 		return null unless method is 'POST'
 		#console.log 'LOGIN', arguments
@@ -92,7 +147,7 @@ model.User = Model 'User',
 					#console.log 'INACTIVE'
 					context.save null
 					false
-				else if user.password is data.pass # is encryptPassword data.pass, user.salt
+				else if user.password is encryptPassword data.pass, user.salt
 					# log in
 					#console.log 'LOGIN'
 					session =
@@ -107,7 +162,15 @@ model.User = Model 'User',
 
 model.Session = Model 'Session'
 
+######################################
+################### Misc
+######################################
+
 model.Course = require('./store/remote')()
+
+######################################
+################### FACETS
+######################################
 
 class WebRootPublic
 	find: () ->
@@ -129,15 +192,15 @@ class WebRootPublic
 			fs.writeFileSync "#{settings.server.static.dir}/index.html~", text
 			fs.renameSync "#{settings.server.static.dir}/index.html~", "#{settings.server.static.dir}/index.html"
 		text
-	home: (data, method, context) ->
-		user = Object.clone context.user
+	home: (data, method, session) ->
+		user = Object.clone session.user
 		delete user.salt
 		delete user.password
 		s = {}
-		for k, v of context
+		for k, v of session
 			s[k] = v?.schema?.get?._value or v?.schema?._value or {id: k, properties: {}, type: 'object'}
 			s[k].id ?= k
-		s = Object.keys context
+		s = Object.keys session
 		#user: user, model: s
 		# JSONP answer for RequireJS
 		'define('+JSON.stringify(user: user, model: s)+');'

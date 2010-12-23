@@ -125,6 +125,7 @@ var HeaderApp = Backbone.View.extend({
 			data: JSON.stringify(data),
 			contentType: 'application/json',
 			success: function(newSession){
+				Backbone.history.saveLocation(null);
 				view.model.set(newSession);
 			},
 			error: function(){
@@ -141,6 +142,7 @@ var HeaderApp = Backbone.View.extend({
 			data: JSON.stringify({}),
 			contentType: 'application/json',
 			success: function(newSession){
+				Backbone.history.saveLocation(null);
 				view.model.set(newSession);
 			},
 			error: function(){
@@ -451,7 +453,12 @@ var EntityView = Backbone.View.extend({
 				m.props = __props__[m.name];
 				m.query = RQL.parse(query).normalize({hardLimit: model.get('user').pageSize || 10, clear: _.pluck(m.props, 'name')});
 				console.log('QUERY', this, arguments, m.query);
-				m.fetch({url: entity + (query ? '?' + query : '')});
+				m.fetch({
+					url: entity + (query ? '?' + query : ''),
+					error: function(_m, xhr){
+						alert('FAILED: ' + xhr.responseText);
+					}
+				});
 			});
 			// instance viewer
 			this.route(/^([^/?]+)\/([^/?]+)$/, 'instance', function(entity, id){

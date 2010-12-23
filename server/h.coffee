@@ -72,37 +72,11 @@ Object.veto = (o, fields) ->
 			k1 = k.shift()
 			v1 = o[k1]
 			if v1 instanceof Array
-				o[k1] = v1.map (x) -> veto(x, if k.length > 1 then [k] else k)
+				o[k1] = v1.map (x) -> Object.veto(x, if k.length > 1 then [k] else k)
 			else if v1
-				o[k1] = veto(v1, if k.length > 1 then [k] else k)
+				o[k1] = Object.veto(v1, if k.length > 1 then [k] else k)
 	o
 	#Object.freeze o
-
-# proxy the Object methods
-Object.proxy = (o, exportedMethods) ->
-	#console.log 'PROXY', exportedMethods
-	proxy = Object.create null
-	if exportedMethods instanceof Array
-		#exportedMethods.forEach (name) ->
-		for name in exportedMethods
-			#console.log 'EXPORT', name, value
-			value = o[name]
-			if typeof value is 'function'
-				v = value.bind o
-			else
-				throw 'Cannot proxy non-function'
-			Object.defineProperty proxy, name, value: v
-	else
-		for name, value of exportedMethods
-			#console.log 'EXPORT', name, value
-			if value is true
-				v = o[name].bind o
-			else if typeof value is 'function'
-				v = value.bind o
-			else
-				throw 'Cannot proxy non-function'
-			Object.defineProperty proxy, name, value: v
-	proxy
 
 # shallow copy
 Object.copy = (source, target, overwrite) ->

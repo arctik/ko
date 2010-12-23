@@ -243,7 +243,7 @@ handlerFactory = (app, before, after) ->
 					# copy properties?
 					else if search
 						delete data.id # id is constant!
-						model.patch {$set: data}, query
+						model.patch query, data
 					# mimic PUT
 					else
 						model.save data

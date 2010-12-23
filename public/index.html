@@ -56,8 +56,8 @@
 	<script id="tmpl-header" type="text/x-jquery-tmpl">
 		<div class="grid_12 alpha">&nbsp;</div>
 		<div class="grid_4 omega">
-			<% if (user.email) { %>
-			<div><span><%= user.email %></span>
+			<% if (user.id) { %>
+			<div><span><%= user.email || user.id %></span>
 				<form id="logout" class="modal" style="display: inline;">
 					<button type="submit">Logout</button>
 				</form>
@@ -110,7 +110,7 @@
 	</script>
 
 	<script id="tmpl-navigation" type="text/x-jquery-tmpl">
-		<% if (user.email) { %>
+		<% if (user.id) { %>
 		<div class="menu grid_12 alpha">
 			<a href="#Bar">Bar</a>
 			<a href="#Course">Course</a>
@@ -120,7 +120,7 @@
 	</script>
 
 	<script id="tmpl-content" type="text/x-jquery-tmpl">
-		<% if (user.email) { %>
+		<% if (user.id) { %>
 		<span><%=Date.now()%></span>
 		<div id="entity"></div>
 		<% } else { %>

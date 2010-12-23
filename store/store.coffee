@@ -56,8 +56,8 @@ parse = (query) ->
 				# match on regexp means equality
 				else if func is 'match'
 					func = 'eq'
-					regex = new RegExp()
-					regex.compile.apply(regex, args)
+					regex = new RegExp
+					regex.compile.apply regex, args
 					args = regex
 				else
 					# FIXME: do we really need to .join()?!
@@ -114,7 +114,9 @@ class Storage extends Database
 		#console.log 'INSERT?', document
 		super collection, document, (err, result) =>
 			#console.log 'INSERT!', arguments
-			return deferred.reject URIError err.message if err
+			if err
+				return deferred.reject SyntaxError 'Duplicated' if err.code is 11000
+				return deferred.reject URIError err.message if err.code
 			result.id = result._id
 			delete result._id
 			deferred.resolve result
@@ -180,14 +182,18 @@ class Storage extends Database
 	get: (collection, id) ->
 		return null unless id
 		@find collection, "id=#{id}"
-	patch: (collection, changes, query) ->
+	patch: (collection, query, changes) ->
 		changes ?= {}
-		query = parse(query).search
-		query.$atomic = 1
+		query = parse query
+		search = query.search
+		search.$atomic = 1
 		deferred = defer()
-		#console.log 'MUPDATE?!', query, changes
+		console.log 'PATCH?', query, search, changes
 		# FIXME: how to $unset?!
-		Storage.__super__.update.call @, collection, query, changes, (err, result) =>
+		# wrap changes into $set key
+		changes = $set: changes unless changes.$set
+		Storage.__super__.update.call @, collection, search, changes, (err, result) =>
+			console.log 'PATCH!', arguments
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
 		deferred.promise
@@ -206,48 +212,17 @@ Store = (entity) ->
 	update: db.update.bind db, entity
 	patch: db.patch.bind db, entity
 	drop: db.drop.bind db, entity
-	#count???: db.count.bind db, entity
 
 Model = (entity, overrides) ->
 	Compose.create Store(entity), overrides
 #Model = (entity, overrides...) ->
 #	Compose.create.apply Compose, Store(entity), overrides
 
-'''
-class Collection
-	constructor: (entity) ->
-		#Collection.__super__.__proto__ = Store(entity)
-		#@__proto__ = Store(entity)
-		#p(T.__proto__.find())
-		Compose.call Store(entity), @
-	find: (query) ->
-		console.log 'FINDINTERCEPTED!'
-		#super (query or '') + '&a!=null'
-		@__proto__.find (query or '') + '&a!=null'
-
-class Model
-	constructor: (entity, options) ->
-		options ?= {}
-		@db = Object.freeze Store entity
-		#@read = options.validate.read if options.validate.read
-		#@write = options.write if options.write
-	find: () -> @db.find.apply @, arguments
-	get: () -> @db.get.apply @, arguments
-	#get: () ->
-	#	wait @db.get.apply(@, arguments), (doc) =>
-	#		if doc
-	#			console.log 'FILTER', "select(#{@read})"
-	#			doc = filterArray "select(#{@read})", {}, [doc]
-	add: () -> @db.add.apply @, arguments
-	#update: () -> @db.update.apply @, arguments
-	save: () -> @db.save.apply @, arguments
-	remove: () -> @db.remove.apply @, arguments
-	patch: () -> @db.patch.apply @, arguments
-	#drop: () -> @db.drop.apply @, arguments
-'''
+Facet = (model, expose) ->
+	facet = {}
+	expose.forEach (name) -> facet[name] = Compose.from model, name
+	Compose.create {}, facet
 
 module.exports =
-	#Database: Database
-	#Store: Store
 	Model: Model
-	#Collection: Collection
+	Facet: Facet
