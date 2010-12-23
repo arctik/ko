@@ -3,8 +3,6 @@
 Database = require('mongo').Database
 ObjectID = require('mongo').ObjectID
 
-Compose = require 'compose'
-
 #
 # RQL
 #
@@ -188,12 +186,12 @@ class Storage extends Database
 		search = query.search
 		search.$atomic = 1
 		deferred = defer()
-		console.log 'PATCH?', query, search, changes
+		#console.log 'PATCH?', query, search, changes
 		# FIXME: how to $unset?!
 		# wrap changes into $set key
 		changes = $set: changes unless changes.$set
 		Storage.__super__.update.call @, collection, search, changes, (err, result) =>
-			console.log 'PATCH!', arguments
+			#console.log 'PATCH!', arguments
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
 		deferred.promise
@@ -202,7 +200,6 @@ class Storage extends Database
 
 db = new Storage
 
-# TODO: select(read/write) should be here!
 Store = (entity) ->
 	find: db.find.bind db, entity
 	get: db.get.bind db, entity
@@ -213,16 +210,5 @@ Store = (entity) ->
 	patch: db.patch.bind db, entity
 	drop: db.drop.bind db, entity
 
-Model = (entity, overrides) ->
-	Compose.create Store(entity), overrides
-#Model = (entity, overrides...) ->
-#	Compose.create.apply Compose, Store(entity), overrides
-
-Facet = (model, expose) ->
-	facet = {}
-	expose.forEach (name) -> facet[name] = Compose.from model, name
-	Compose.create {}, facet
-
 module.exports =
-	Model: Model
-	Facet: Facet
+	Store: Store

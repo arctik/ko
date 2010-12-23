@@ -20,27 +20,8 @@ global.waitNomatter = (promise, callback, errback) -> promises.when promise, cal
 global.wait = promises.when
 global.waitAll = promises.all
 global.waitAllKeys = promises.allKeys
+global.Step = require('promised-io/step').Step
 global.p = (promise) -> wait promise, (x) -> console.dir x
-
-#
-# async helper. inspired by creationix' Step
-#
-global.Step = (context, steps) ->
-	# define the main callback
-	next = () ->
-		# return if there are no steps left
-		return arguments[0] unless steps.length
-		# get the next step to execute
-		fn = steps.shift()
-		# run the step in a try..catch block so exceptions don't get out of hand
-		try
-			result = fn.apply context, arguments
-			result = wait result, next, next unless result is undefined
-		catch err
-			# pass any exceptions on through the next callback
-			next err
-		result
-	next()
 
 #
 # Object helpers

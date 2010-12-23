@@ -8,11 +8,21 @@ Object.defineProperty global, 'settings',
 	get: () -> settings
 
 fs = require 'fs'
+Compose = require 'compose'
 
 run = require('./server').run
-Model = require('./store/store').Model
-Facet = require('./store/store').Facet
-Compose = require 'compose'
+Store = require('./store/store').Store
+
+Model = (entity, store, overrides) ->
+	Compose.create store, overrides
+#Model = (entity, store, overrides...) ->
+#	Compose.create.apply Compose, store, overrides
+
+Facet = (model, expose...) ->
+	facet = {}
+	expose.forEach (name) ->
+		facet[name] = Compose.from(model, name).bind model
+	Object.freeze Compose.create {}, facet
 
 PermissiveFacet = (model, methods...) ->
 	r =
@@ -41,7 +51,7 @@ model = {}
 ################### Tests
 ######################################
 
-model.Bar = Model 'Bar',
+model.Bar = Model 'Bar', Store('Bar'),
 	find1: (query) ->
 		console.log 'FINDINTERCEPTED!'
 		# TODO: sugar?
@@ -52,7 +62,7 @@ model.Bar = Model 'Bar',
 			wait base.call(@, (query or '') + '&a!=null'), (result) ->
 				result.forEach (doc) ->
 					doc._version = 2
-					doc = Object.veto doc, ['id'] 
+					doc = Object.veto doc, ['id']
 				console.log 'AFTERFIND', result
 				result
 	#find: Compose.before (query) ->
@@ -62,8 +72,6 @@ model.Bar = Model 'Bar',
 	#	console.log 'AFTERFIND', arguments
 	#	promise
 	foos1: () -> @find "foo!=null"
-
-model.Bar1 = Facet model.Bar, ['find']
 
 ######################################
 ################### User
@@ -77,7 +85,7 @@ for k, v of settings.security.admins
 	v.salt = nonce()
 	v.password = encryptPassword v.password, v.salt
 
-model.User = Model 'User',
+model.User = Model 'User', Store('User'),
 	get: (id) ->
 		return null unless id
 		wait @__proto__.get(id), (user) ->
@@ -160,13 +168,13 @@ model.User = Model 'User',
 					context.save null
 					false
 
-model.Session = Model 'Session'
+model.Session = Model 'Session', Store('Session')
 
 ######################################
 ################### Misc
 ######################################
 
-model.Course = require('./store/remote')()
+model.Course = Model 'Course', require('./store/remote')()
 
 ######################################
 ################### FACETS
@@ -204,21 +212,15 @@ class WebRootPublic
 		#user: user, model: s
 		# JSONP answer for RequireJS
 		'define('+JSON.stringify(user: user, model: s)+');'
-	signup: model.User.signup.bind model.User
 	login: model.User.login.bind model.User
-	false: () ->
-		r = {}
-		for k, v of model.User.prototype #__proto__
-			r[k] = v.toString()
-		r
-	test: () -> model.Bar.find {pass: {$ne: '124'}}
+	signup: model.User.signup.bind model.User
 
 class WebRootUser extends WebRootPublic
+	Course: Facet model.Course, 'find', 'get'
 
 class WebRootAdmin extends WebRootUser
 	Foo: model.Foo
 	Bar: PermissiveFacet model.Bar, 'foos1'
-	Course: PermissiveFacet model.Course, 'find', 'get'
 
 facets.public = new WebRootPublic()
 facets.user = new WebRootUser()

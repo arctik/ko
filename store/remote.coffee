@@ -44,6 +44,7 @@ parseXmlFeed = (uri, callback) ->
 		parser.parseString data
 		deferred.promise
 
+# TODO: make a class!
 module.exports = (options) ->
 
 	options ?= {}
@@ -95,4 +96,7 @@ module.exports = (options) ->
 			else
 				wait fetch(), () -> store.get id
 
-	Object.freeze store
+	{
+		find: store.find.bind store
+		get: store.get.bind store
+	}

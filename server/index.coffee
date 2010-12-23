@@ -222,6 +222,7 @@ handlerFactory = (app, before, after) ->
 				return URIError query.error if query.error
 				# determine handler parameters
 				# N.B. we rely on exceptions being catched
+				console.log 'MODEL', model
 				if typeof model is 'function'
 					# TODO: elaborate on method and data
 					# FIXME: move to POST handler?
