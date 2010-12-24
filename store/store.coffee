@@ -158,7 +158,7 @@ class Storage extends Database
 			deferred.resolve result
 		deferred.promise
 	find: (collection, query) ->
-		console.log 'FIND?', query
+		#console.log 'FIND?', query
 		query = parse query
 		#console.log 'FIND!', query
 		# limit the limit

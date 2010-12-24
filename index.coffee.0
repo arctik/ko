@@ -1,6 +1,0 @@
-store = require './store/store'
-module.exports =
-	run: require('./server').run
-	Store: store.Store
-	Queue: store.Queue
-	#Model: store.Model

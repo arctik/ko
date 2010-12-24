@@ -199,12 +199,12 @@ handlerFactory = (app, before, after) ->
 				# REST handler
 				# find the method handler by descending into model own properties
 				parts = path.substring(1).split '/'
-				model = Object.drillDown session.context, parts
+				model = U.drill session.context, parts
 				# bail out unless the handler is determined
 				unless model or search
 					return null if parts.length isnt 2
 					# /Foo/bar --> try to mangle to /Foo?id=bar
-					model = Object.drillDown session.context, [parts[0]]
+					model = U.drill session.context, [parts[0]]
 					#console.log 'PARTS', parts, model
 					return null unless model
 					search = 'id=' + parts[1]
@@ -227,7 +227,7 @@ handlerFactory = (app, before, after) ->
 					# TODO: elaborate on method and data
 					# FIXME: move to POST handler?
 					# FIXME: passing context is good?
-					console.log 'DIRECTCALL', model, this
+					#console.log 'DIRECTCALL', model, this
 					model data, method, session
 				else if method is 'GET'
 					model.find query

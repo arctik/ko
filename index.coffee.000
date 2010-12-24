@@ -15,21 +15,46 @@ Store = require('./store/store').Store
 
 Model = (entity, store, overrides) ->
 	Compose.create store, overrides
+#Model = (entity, store, overrides...) ->
+#	Compose.create.apply Compose, store, overrides
 
-Facet = (model, expose...) ->
-	facet = {}
-	expose.forEach (name) ->
-		facet[name] = model[name].bind model if model[name]
-		#facet[name] = Compose.from(model, name).bind model
-	Object.freeze Compose.create {}, facet
+#Facet = (model, expose...) ->
+#	facet = {}
+#	expose.forEach (name) ->
+#		facet[name] = Compose.from(model, name).bind model
+#	Object.freeze Compose.create {}, facet
+
+#Facet = (model, expose...) ->
+#	#console.log 'DEFINE? FACET:', model, expose
+#	facet = {}
+#	expose.forEach (m) ->
+#		facet[m] = model[m].bind model if model[m]
+#	#console.log 'DEFINED FACET:', facet
+#	Object.freeze facet
+
+#PermissiveFacet = (model, expose...) ->
+#	args = ['find', 'get', 'add', 'save', 'patch', 'remove']
+#	args.unshift model
+#	args = args.concat expose
+#	Facet.apply model, args
 
 PermissiveFacet = (model, expose...) ->
-	args = [model].concat(['find', 'get', 'add', 'save', 'patch', 'remove']).concat(expose)
-	Facet.apply this, args
+	facet = {}
+	['find', 'get', 'add', 'save', 'patch', 'remove'].forEach (m) ->
+		facet[m] = model[m]?.bind model # if model[m]
+		#facet[m] = Compose.from(model, m).bind model
+	#expose.forEach (m) ->
+	#	#facet[m] = model[m].bind model if model[m]
+	#	facet[m] = Compose.from(model, m).bind model
+	#console.log 'DEFINED FACET:', Object.freeze facet
+	#Object.freeze Object.create {dermo:true}, facet
+	Object.freeze facet
 
-RestrictiveFacet = (model, expose...) ->
-	args = [model].concat(['find', 'get']).concat(expose)
-	Facet.apply this, args
+#RestrictiveFacet = (model, expose...) ->
+#	args = ['find', 'get']
+#	args.unshift model
+#	args = args.concat expose
+#	Facet.apply model, args
 
 facets =
 	public: {}
@@ -42,6 +67,7 @@ model = {}
 ################### Tests
 ######################################
 
+'''
 model.Bar = Model 'Bar', Store('Bar'),
 	find1: (query) ->
 		console.log 'FINDINTERCEPTED!'
@@ -63,6 +89,7 @@ model.Bar = Model 'Bar', Store('Bar'),
 	#	console.log 'AFTERFIND', arguments
 	#	promise
 	foos1: () -> @find "foo!=null"
+'''
 
 ######################################
 ################### User
@@ -199,9 +226,7 @@ model.User = Model 'User', Store('User'),
 		# TODO: veto some changes
 		@patch Query(query).eq('type', 999), changes
 	__removeTyped: (query, type) ->
-		q = Query(query)
-		throw TypeError 'Please, be more specific' unless q.args.length
-		@patch q.eq('type', type), active: false, _deleted: true
+		@patch Query(query).eq('type', type), active: false, _deleted: true
 	removeAffiliates: (query) -> @__removeTyped query, 1
 	removeMerchants: (query) -> @__removeTyped query, 2
 	removeAdmins: (query) -> @__removeTyped query, 999
@@ -239,7 +264,7 @@ model.Session = Model 'Session', Store('Session'),
 ################### Misc
 ######################################
 
-model.Course = Model 'Course', require('./store/remote')()
+#model.Course = Model 'Course', require('./store/remote')()
 
 ######################################
 ################### FACETS
@@ -273,10 +298,7 @@ WebRootPublic = Compose.create {foo: 'bar'},
 		#for k, v of session
 		#	s[k] = v?.schema?.get?._value or v?.schema?._value or {id: k, properties: {}, type: 'object'}
 		#	s[k].id ?= k
-		#s = _.keys session.context
-		s = {}
-		for k, v of session.context
-			s[k] = typeof v
+		s = _.keys session.context
 		#s = session.context
 		# JSONP answer for RequireJS
 		'define('+JSON.stringify(user: session.user, model: s)+');'
@@ -287,14 +309,14 @@ WebRootPublic = Compose.create {foo: 'bar'},
 #WebRootUser = Compose WebRootPublic,
 #WebRootUser = Compose.call _.clone(WebRootPublic),
 WebRootUser = Compose.create WebRootPublic,
-	Course: RestrictiveFacet model.Course
+	Course: null #model.Course #Facet model.Course, 'find', 'get'
 
 #class WebRootAdmin extends WebRootUser
 #WebRootAdmin = Compose WebRootUser,
 #WebRootAdmin = Compose.call _.clone(WebRootUser),
 WebRootAdmin = Compose.create WebRootUser,
-	Bar: PermissiveFacet model.Bar, 'foos2'
-	User: PermissiveFacet model.User, 'addAffiliate', 'addMerchant', 'addAdmin', 'removeAffiliates', 'removeMerchants', 'removeAdmins'
+	#Bar: PermissiveFacet model.Bar #, 'foos2'
+	User: PermissiveFacet model.User, 'addAffiliate', 'addMerchant', 'addAdmin'
 
 #facets.public = new WebRootPublic
 #facets.user = new WebRootUser
@@ -306,7 +328,7 @@ facets.admin = WebRootAdmin
 # TODO: remove from global
 global.model = model
 global.facets = facets
-#console.log 'FAC', facets.admin
+console.log 'FAC', facets.admin
 
 ############################
 
