@@ -112,6 +112,7 @@ global.CustomError = (message, props) ->
 
 #global.drillDown = require('rql/js-array').evaluateProperty
 global.parseQuery = require('rql/parser').parseGently
+global.Query = require('rql/query').Query
 global.filterArray = require('rql/js-array').executeQuery
 _.mixin
 	query: (arr, query, params) ->

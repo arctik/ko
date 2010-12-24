@@ -18,27 +18,29 @@ Model = (entity, store, overrides) ->
 #Model = (entity, store, overrides...) ->
 #	Compose.create.apply Compose, store, overrides
 
+#Facet = (model, expose...) ->
+#	facet = {}
+#	expose.forEach (name) ->
+#		facet[name] = Compose.from(model, name).bind model
+#	Object.freeze Compose.create {}, facet
+
 Facet = (model, expose...) ->
 	facet = {}
-	expose.forEach (name) ->
-		facet[name] = Compose.from(model, name).bind model
-	Object.freeze Compose.create {}, facet
+	expose.forEach (m) ->
+		facet[m] = model[m]?.bind model
+	Object.freeze facet
 
-PermissiveFacet = (model, methods...) ->
-	r =
-		find: model.find?.bind model
-		get: model.get?.bind model
-		add: model.add?.bind model
-		save: model.save?.bind model
-		remove: model.remove?.bind model
-	methods.forEach (m) ->
-		r[m] = model[m]?.bind model
-	r
+PermissiveFacet = (model, expose...) ->
+	args = [model]
+	args.push 'find', 'get', 'add', 'save', 'patch', 'remove'
+	args = args.concat expose
+	Facet.apply model, args
 
-RestrictiveFacet = (model, methods...) ->
-	r =
-		find: model.find?.bind model
-		get: model.get?.bind model
+RestrictiveFacet = (model, expose...) ->
+	args = [model]
+	args.push 'find', 'get'
+	args = args.concat expose
+	Facet.apply model, args
 
 facets =
 	public: {}
@@ -95,8 +97,7 @@ model.User = Model 'User', Store('User'),
 	add: null
 	update: null
 	save: null
-	remove: (query) ->
-		@patch query, active: false, _deleted: true
+	remove: null
 	drop: null
 	patch: (query, changes) ->
 		return URIError 'Please be more specific' unless query
@@ -112,27 +113,6 @@ model.User = Model 'User', Store('User'),
 			changes.password = encryptPassword changes.password, changes.salt
 		# TODO: limit access rights in changes not higher than of current user
 		@__proto__.patch query, changes
-	signup: (data, method, session) ->
-		return null unless method is 'POST'
-		data ?= {}
-		Step @, [
-			() ->
-				@get data.user
-			(user) ->
-				return SyntaxError 'Already exists' if user
-				# TODO: password set, notify the user
-				# TODO: notify only if added OK!
-				# create salt, hash salty password
-				salt = nonce()
-				console.log 'PASSWORD SET TO', data.pass
-				password = encryptPassword data.pass, salt
-				#console.log 'HERE', salt, password
-				# TODO: activation!
-				@__proto__.add id: data.user, password: password, salt: salt, email: data.email, regDate: Date.now(), active: true
-			(user) ->
-				#console.log 'USER', user
-				user
-		]
 	login: (data, method, context) ->
 		return null unless method is 'POST'
 		#console.log 'LOGIN', arguments
@@ -160,15 +140,109 @@ model.User = Model 'User', Store('User'),
 					#console.log 'LOGIN'
 					session =
 						id: nonce()
-						user: user
+						user:
+							id: user.id
+							email: user.email
+							access: user.access
 					session.expires = new Date(15*24*60*60*1000 + (new Date()).valueOf()) if data.remember
 					context.save session
-					sid: session.id, user: {id: user.id, email: user.email}
+					sid: session.id, user: session.user
 				else
 					context.save null
 					false
+	signup: (data, method, session) ->
+		return null unless method is 'POST'
+		data ?= {}
+		Step @, [
+			() ->
+				@get data.user
+			(user) ->
+				return SyntaxError 'Already exists' if user
+				# TODO: password set, notify the user
+				# TODO: notify only if added OK!
+				# create salt, hash salty password
+				salt = nonce()
+				console.log 'PASSWORD SET TO', data.pass
+				password = encryptPassword data.pass, salt
+				#console.log 'HERE', salt, password
+				# TODO: activation!
+				@__proto__.add
+					id: data.user
+					password: password
+					salt: salt
+					email: data.email
+					regDate: Date.now()
+					type: data.type
+					active: true
+			(user) ->
+				#console.log 'USER', user
+				user
+		]
 
-model.Session = Model 'Session', Store('Session')
+	addAffiliate: (data, method, context) ->
+		data ?= {}
+		data.type = 1
+		@signup data, method, context
+	addMerchant: (data, method, context) ->
+		data ?= {}
+		data.type = 2
+		@signup data, method, context
+	addAdmin: (data, method, context) ->
+		data ?= {}
+		data.type = 999
+		@signup data, method, context
+	findAffiliates: (query) ->
+		# TODO: get rid of "or ''"; may be query.append()?
+		# TODO: how to append vetoing select()
+		@__proto__.find Query(query).eq('type', 1).ne('_deleted', true)
+	findMerchants: (query) ->
+		@__proto__.find Query(query).eq('type', 2).ne('_deleted', true)
+	findAdmins: (query) ->
+		@__proto__.find Query(query).eq('type', 999).ne('_deleted', true)
+	patchAffiliates: (query, changes) ->
+		# TODO: veto some changes
+		# p(model.User.findAffiliates())
+		@patch Query(query).eq('type', 1), changes
+	patchMerchants: (query, changes) ->
+		# TODO: veto some changes
+		@patch Query(query).eq('type', 2), changes
+	patchAdmins: (query, changes) ->
+		# TODO: veto some changes
+		@patch Query(query).eq('type', 999), changes
+	__removeTyped: (query, type) ->
+		@patch Query(query).eq('type', type), active: false, _deleted: true
+	removeAffiliates: (query) -> @__removeTyped query, 1
+	removeMerchants: (query) -> @__removeTyped query, 2
+	removeAdmins: (query) -> @__removeTyped query, 999
+
+model.Session = Model 'Session', Store('Session'),
+	# look for a saved session, attach .save() if found
+	lookup: (req, res) ->
+		sid = req.getSecureCookie 'sid'
+		Step @, [
+			() ->
+				@get sid
+			(session) ->
+				session ?= user: {}
+				#console.log 'SESSIN!' + sid, session
+				Object.defineProperties session,
+					save:
+						value: (value) =>
+							#console.log 'SESSOUT' + sid, value
+							options = {path: '/', httpOnly: true}
+							if value
+								# user logged in --> store new session and set the cookie
+								sid = value.id
+								options.expires = value.expires if value.expires
+								#console.log 'MAKESESS', value
+								@add value
+								res.setSecureCookie 'sid', sid, options
+							else
+								# user logged out --> remove the session and the cookie
+								#console.log 'REMOVESESS', @
+								@remove id: sid
+								res.clearCookie 'sid', options
+		]
 
 ######################################
 ################### Misc
@@ -202,8 +276,6 @@ class WebRootPublic
 		text
 	home: (data, method, session) ->
 		user = Object.clone session.user
-		delete user.salt
-		delete user.password
 		s = {}
 		for k, v of session
 			s[k] = v?.schema?.get?._value or v?.schema?._value or {id: k, properties: {}, type: 'object'}
@@ -221,6 +293,7 @@ class WebRootUser extends WebRootPublic
 class WebRootAdmin extends WebRootUser
 	Foo: model.Foo
 	Bar: PermissiveFacet model.Bar, 'foos1'
+	User: Facet model.User, 'createAffiliate', 'createMerchant', 'createAdmin'
 
 facets.public = new WebRootPublic()
 facets.user = new WebRootUser()
@@ -257,28 +330,8 @@ wait waitAllKeys(model), (_facets) ->
 				context
 		getSession:
 			value: (req, res) ->
-				# TODO: unclosure to be in Session prototype?
-				sid = req.getSecureCookie 'sid'
-				wait model.Session.get(sid), (session) =>
-					session ?= id: sid, user: {}
-					#console.log 'SESSIN!' + sid, session
+				wait model.Session.lookup(req, res), (session) =>
 					Object.defineProperties session,
-						save:
-							value: (value) ->
-								#console.log 'SESSOUT' + sid, value
-								options = {path: '/', httpOnly: true}
-								if value
-									# user logged in --> store new session and set the cookie
-									sid = value.id
-									options.expires = value.expires if value.expires
-									#console.log 'MAKESESS', value
-									model.Session.add value
-									res.setSecureCookie 'sid', sid, options
-								else
-									# user logged out --> remove the session and the cookie
-									#console.log 'REMOVESESS'
-									model.Session.remove id: sid
-									res.clearCookie 'sid', options
 						context:
 							get: () ->
 								level = app.getUserLevel session.user
