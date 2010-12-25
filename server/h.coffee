@@ -42,7 +42,9 @@ U.mixin
 				obj
 			else
 				attr = if U.isNumber path then path else decodeURIComponent path
-				obj.get and obj.get(attr) or obj[attr]
+				# FIXME: false .get() in models, .get() requires wait()
+				#obj.get and obj.get(attr) or obj[attr]
+				obj[attr]
 		_drill obj, path
 	# kick off properties mentioned in fields from obj
 	veto: (obj, fields) ->
@@ -87,3 +89,6 @@ U.mixin
 		filterArray query, params or {}, arr
 
 ############
+
+global.timeout  = (time, next) -> setTimeout next, time
+global.interval = (time, next) -> setInterval next, time

@@ -98,20 +98,19 @@ parse = (query) ->
 # Storage
 #
 class Storage extends Database
-	constructor: (options) ->
+	constructor: (url, options) ->
 		options ?= {}
 		options.hex ?= true
-		super options.name or 'test', options
-		#@options.host.replace /^mongodb:\/\/([^\/]+)/ # TODO
-	insert: (collection, document) ->
+		super url, options
+	add: (collection, document) ->
 		document ?= {}
 		if document.id
 			document._id = document.id
 			delete document.id
 		deferred = defer()
-		#console.log 'INSERT?', document
-		super collection, document, (err, result) =>
-			#console.log 'INSERT!', arguments
+		#console.log 'ADD?', document
+		Storage.__super__.insert.call @, collection, document, (err, result) =>
+			#console.log 'ADD!', arguments
 			if err
 				return deferred.reject SyntaxError 'Duplicated' if err.code is 11000
 				return deferred.reject URIError err.message if err.code
@@ -126,7 +125,7 @@ class Storage extends Database
 			delete document.id
 		deferred = defer()
 		#console.log 'UPDATE?', document
-		# TODO: _deleted: true --> means remove!
+		# TODO: _deleted: true --> means remove?
 		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true, upsert: true}, (err, result) =>
 			#console.log 'UPDATE!', arguments
 			return deferred.reject null if err
@@ -134,19 +133,12 @@ class Storage extends Database
 			delete result._id
 			deferred.resolve result
 		deferred.promise
-	save: (collection, document) ->
-		document ?= {}
-		if not document.id
-			# TODO: fill with defaults first?
-			@insert collection, document
-		else
-			@update collection, document
 	remove: (collection, query) ->
 		query = parse query
 		deferred = defer()
 		# fuser
 		#console.log 'REM', query
-		throw TypeError 'Refused to remove the whole collection. Use drop() instead' unless Object.keys(query.search).length
+		throw TypeError 'Use drop() instead to remove the whole collection' unless Object.keys(query.search).length
 		super collection, query.search, (err, result) =>
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
@@ -189,7 +181,9 @@ class Storage extends Database
 		#console.log 'PATCH?', query, search, changes
 		# FIXME: how to $unset?!
 		# wrap changes into $set key
-		changes = $set: changes unless changes.$set
+		unless changes.$set or changes.$unset
+			changes = $set: changes
+		#console.log 'PATCH???', changes
 		Storage.__super__.update.call @, collection, search, changes, (err, result) =>
 			#console.log 'PATCH!', arguments
 			return deferred.reject URIError err.message if err
@@ -198,13 +192,12 @@ class Storage extends Database
 
 #########################################
 
-db = new Storage
+db = new Storage settings.database.url
 
 Store = (entity) ->
 	find: db.find.bind db, entity
 	get: db.get.bind db, entity
-	save: db.save.bind db, entity
-	add: db.insert.bind db, entity
+	add: db.add.bind db, entity
 	remove: db.remove.bind db, entity
 	update: db.update.bind db, entity
 	patch: db.patch.bind db, entity

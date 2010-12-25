@@ -1,6 +1,7 @@
 'use strict'
 require.paths.unshift __dirname + '/lib/node'
 sys = require 'util'
+
 C = require 'compose'
 
 p = C.create {foo: 'bar'},
@@ -14,10 +15,19 @@ Facet = (model) ->
 	f = {}
 	['m1', 'm2'].forEach (m) ->
 		#f[m] = C.from.call(model, m, m).bind(model)
-		f[m] = model[m].bind model if model[m]
+		f[m] = C.from.call(model, m) #.bind(model)
+		#f[m] = model[m].bind model if model[m]
 	f
 
-Facet(u).m1()
+#Facet(u).m1()
+
+f = {}
+f.a1 =
+	U: {f:'f'}
+f.a2 =
+	X: {g:'g'}
+
+a = C.create.apply null, [{}].concat(['a1', 'a2'].map (x) -> f[x])
 
 stdin = process.openStdin()
 stdin.on 'close', process.exit
@@ -26,3 +36,4 @@ repl.context.C = C
 repl.context.Facet = Facet
 repl.context.p = p
 repl.context.u = u
+repl.context.a = a

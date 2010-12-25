@@ -31,7 +31,7 @@ var __props__ = {
 		{name: 'email', title: 'Мыло'}
 	],
 	Course: [
-		{name: 'id', title: 'Валюта'},
+		{name: 'cur', title: 'Валюта'},
 		{name: 'value', title: 'Курс'},
 	]
 };
@@ -58,8 +58,8 @@ var Entity = Backbone.Collection.extend({
 		});
 	},
 	destroyMany: function(ids){
-		this.updateMany(ids, {_deleted: true});
-		return;
+		//this.updateMany(ids, {_deleted: true});
+		//return;
 		var url = this.name + '?in(id,$1)';
 		var data = {queryParameters: [ids]};
 		var meta = {
@@ -319,7 +319,7 @@ var EntityView = Backbone.View.extend({
 	selectRow: function(e){
 		e.preventDefault();
 		var fn = $(e.target).attr('checked');
-		// TODO: reflect all-selected status in master checkbox 
+		// TODO: reflect all-selected status in master checkbox
 		$(e.target).parents('.action-select-row:first').toggleClass('selected', fn);
 	},
 	// gmail-style selection, shift-click selects the sequence

@@ -24,17 +24,15 @@ module.exports =
 			recaptcha:
 				pubkey: '6LcYML4SAAAAAMrP_hiwsXJo3FtI21gKiZ1Jun7U'
 				privkey: '6LcYML4SAAAAAPby-ghBSDpi97JP1LYI71O-J6kx'
-			admins:
+			roots:
 				root:
 					id: 'root'
 					email: 'dronnikov@gmail.com'
 					password: '123'
 					active: true
 		database:
-			dir: 'data'
-			host: '127.0.0.1'
-			port: 27017
-			name: 'omega'
+			url: 'mongodb://127.0.0.1/test'
+			url2: 'mongodb://dvv:dvv@flame.mongohq.com:27068/irc'
 			hardLimit: 100
 		upload:
 			dir: `(function(){var path='upload';try{fs.mkdirSync(path,0750);}catch(err){};return path;})()`

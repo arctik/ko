@@ -57,7 +57,7 @@
 		<div class="grid_12 alpha">&nbsp;</div>
 		<div class="grid_4 omega">
 			<% if (user.id) { %>
-			<div><span><%= user.email || user.id %></span>
+			<div><span><%= user.type %>&nbsp;<%= user.email || user.id %></span>
 				<form id="logout" class="modal" style="display: inline;">
 					<button type="submit">Logout</button>
 				</form>

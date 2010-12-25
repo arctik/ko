@@ -190,7 +190,7 @@ handlerFactory = (app, before, after) ->
 				# get session
 				app.getSession req, res
 			(session) ->
-				console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
+				#console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
 				# run REST handler
 				method = req.method
 				path = req.location.pathname
@@ -222,17 +222,17 @@ handlerFactory = (app, before, after) ->
 				return URIError query.error if query.error
 				# determine handler parameters
 				# N.B. we rely on exceptions being catched
-				console.log 'MODEL', model
+				#console.log 'MODEL', model
 				if typeof model is 'function'
 					# TODO: elaborate on method and data
 					# FIXME: move to POST handler?
 					# FIXME: passing context is good?
 					#console.log 'DIRECTCALL', model, this
-					model data, method, session
+					model data, session
 				else if method is 'GET'
 					model.find query
 				else if method is 'PUT'
-					model.save data
+					model.update data
 				# TODO: parser stucks here!
 				else if method is 'DELETE'
 					model.remove query
@@ -247,7 +247,11 @@ handlerFactory = (app, before, after) ->
 						model.patch query, data
 					# mimic PUT
 					else
-						model.save data
+						#model.save data
+						if not data.id
+							model.add data
+						else
+							model.update data
 				else
 					return 405 # ReferenceError?
 			(response) ->
