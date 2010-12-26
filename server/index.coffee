@@ -181,7 +181,6 @@ handlerFactory = (app, before, after) ->
 	# faceted handler
 	faceted = (req, res) ->
 
-		#console.log "REQ: #{req.method} #{req.url}", req.params
 		wid = process.env._WID_
 
 		# process request
@@ -233,29 +232,25 @@ handlerFactory = (app, before, after) ->
 					model.find query
 				else if method is 'PUT'
 					model.update data
-				# TODO: parser stucks here!
 				else if method is 'DELETE'
 					model.remove query
 				else if method is 'POST'
 					# RPC?
 					if data.id and data.method and data.params
 						# FIXME: ignore if data.id was already seen
-						model[data.method] data.params
+						model[data.method] data.params, session
 					# copy properties?
 					else if search
 						delete data.id # id is constant!
 						model.patch query, data
 					# mimic PUT
 					else
-						#model.save data
-						if not data.id
-							model.add data
-						else
-							model.update data
+						#if data.id then model.update data else model.add data
+						model.add data
 				else
 					return 405 # ReferenceError?
 			(response) ->
-				console.log "RESPONSE for #{req.url}", arguments
+				console.log "RESPONSE for #{req.url}", response if response instanceof Error
 				# send the response
 				res.send response
 				# handle post-process

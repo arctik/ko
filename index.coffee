@@ -73,6 +73,36 @@ model.User = Model 'User', Store('User'),
 	get: (id) ->
 		return null unless id
 		settings.security.roots[id] or @__proto__.get id
+	add: (data) ->
+		data ?= {}
+		console.log 'SIGNUP', data
+		Step @, [
+			() ->
+				@get data.id
+			(user) ->
+				return SyntaxError 'Already exists' if user
+				# TODO: password set, notify the user
+				# TODO: notify only if added OK!
+				# create salt, hash salty password
+				salt = nonce()
+				# generate random pass unless one is specified
+				data.password = nonce().substring(0, 7) unless data.password
+				console.log 'PASSWORD SET TO', data.password
+				password = encryptPassword data.password, salt
+				#console.log 'HERE', salt, password
+				# TODO: activation!
+				@__proto__.add
+					id: data.id
+					password: password
+					salt: salt
+					email: data.email
+					regDate: Date.now()
+					type: data.type
+					active: true
+			(user) ->
+				#console.log 'USER', user
+				user
+		]
 	patch: (query, changes) ->
 		return URIError 'Please be more specific' unless query
 		id = parseQuery(query).normalize().pk
@@ -124,34 +154,6 @@ model.User = Model 'User', Store('User'),
 				else
 					context.save null
 					false
-	signup: (data) ->
-		data ?= {}
-		#console.log 'SIGNUP', data
-		Step @, [
-			() ->
-				@get data.user
-			(user) ->
-				return SyntaxError 'Already exists' if user
-				# TODO: password set, notify the user
-				# TODO: notify only if added OK!
-				# create salt, hash salty password
-				salt = nonce()
-				console.log 'PASSWORD SET TO', data.pass
-				password = encryptPassword data.pass, salt
-				#console.log 'HERE', salt, password
-				# TODO: activation!
-				@__proto__.add
-					id: data.user
-					password: password
-					salt: salt
-					email: data.email
-					regDate: Date.now()
-					type: data.type
-					active: true
-			(user) ->
-				#console.log 'USER', user
-				user
-		]
 	profile: (data, session) ->
 		@__proto__.get session.user.id
 
@@ -159,11 +161,12 @@ model.Affiliate = Compose.create model.User, {
 	add: (data) ->
 		data ?= {}
 		data.type = 'affiliate'
-		@signup data
+		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'affiliate').ne('_deleted', true).select('-password', '-salt')
 	patch: (query, changes) ->
-		# TODO: veto some changes
+		# veto some changes
+		#changes.type = undefined
 		@__proto__.patch Query(query).eq('type', 'affiliate'), changes
 	remove: (query) ->
 		q = Query(query)
@@ -175,11 +178,12 @@ model.Merchant = Compose.create model.User, {
 	add: (data) ->
 		data ?= {}
 		data.type = 'merchant'
-		@signup data
+		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'merchant').ne('_deleted', true).select('-password', '-salt')
 	patch: (query, changes) ->
-		# TODO: veto some changes
+		# veto some changes
+		#changes.type = undefined
 		@__proto__.patch Query(query).eq('type', 'merchant'), changes
 	remove: (query) ->
 		q = Query(query)
@@ -191,11 +195,12 @@ model.Admin = Compose.create model.User, {
 	add: (data) ->
 		data ?= {}
 		data.type = 'admin'
-		@signup data
+		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'admin').ne('_deleted', true).select('-password', '-salt')
 	patch: (query, changes) ->
-		# TODO: veto some changes
+		# veto some changes
+		changes.type = undefined
 		@__proto__.patch Query(query).eq('type', 'admin'), changes
 	remove: (query) ->
 		q = Query(query)
@@ -204,7 +209,7 @@ model.Admin = Compose.create model.User, {
 }
 
 model.Session = Model 'Session', Store('Session'),
-	# look for a saved session, attach .save() if found
+	# look for a saved session, attach .save() helper
 	lookup: (req, res) ->
 		sid = req.getSecureCookie 'sid'
 		Step @, [
@@ -215,7 +220,7 @@ model.Session = Model 'Session', Store('Session'),
 				#console.log 'SESSIN!' + sid, session
 				session.save = (value) =>
 					#console.log 'SESSOUT' + sid, value
-					options = {path: '/', httpOnly: true}
+					options = path: '/', httpOnly: true
 					if value
 						# store new session and set the cookie
 						sid = value.id
@@ -307,11 +312,9 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 		# JSONP answer for RequireJS
 		'define('+JSON.stringify(user: session.user, model: s)+');'
 	login: model.User.login.bind model.User
-	signup: model.User.signup.bind model.User
 }
 
 FacetForUser = Compose.create FacetForGuest, {
-	signup: null
 	profile: model.User.profile.bind model.User
 	Course: RestrictiveFacet model.Course
 }
@@ -357,7 +360,7 @@ global.facets = facets
 wait waitAllKeys(model), () ->
 
 	# define the application
-	global.app = app = Compose.create require('events').EventEmitter, {
+	app = Compose.create require('events').EventEmitter, {
 		getSession: (req, res) -> model.Session.lookup(req, res)
 		#handler: handler
 	}

@@ -56,9 +56,9 @@ U.mixin
 				k1 = k.shift()
 				v1 = obj[k1]
 				if v1 instanceof Array
-					obj[k1] = v1.map (x) -> Object.veto(x, if k.length > 1 then [k] else k)
+					obj[k1] = v1.map (x) -> U.veto(x, if k.length > 1 then [k] else k)
 				else if v1
-					obj[k1] = Object.veto(v1, if k.length > 1 then [k] else k)
+					obj[k1] = U.veto(v1, if k.length > 1 then [k] else k)
 		obj
 
 #

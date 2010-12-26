@@ -157,7 +157,10 @@ var HeaderApp = Backbone.View.extend({
 		$.ajax({
 			type: 'POST',
 			url: '/signup',
-			data: JSON.stringify(data),
+			data: JSON.stringify({
+				id: data.user,
+				password: data.pass
+			}),
 			contentType: 'application/json',
 			success: function(newSession){
 				view.model.set(newSession);

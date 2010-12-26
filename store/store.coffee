@@ -126,7 +126,7 @@ class Storage extends Database
 		deferred = defer()
 		#console.log 'UPDATE?', document
 		# TODO: _deleted: true --> means remove?
-		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true, upsert: true}, (err, result) =>
+		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true}, (err, result) =>
 			#console.log 'UPDATE!', arguments
 			return deferred.reject null if err
 			result.id = result._id
