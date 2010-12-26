@@ -231,7 +231,7 @@ handlerFactory = (app, before, after) ->
 				else if method is 'GET'
 					model.find query
 				else if method is 'PUT'
-					model.update data
+					model.put data
 				else if method is 'DELETE'
 					model.remove query
 				else if method is 'POST'
@@ -242,10 +242,9 @@ handlerFactory = (app, before, after) ->
 					# copy properties?
 					else if search
 						delete data.id # id is constant!
-						model.patch query, data
-					# mimic PUT
+						model.update query, data
+					# add new
 					else
-						#if data.id then model.update data else model.add data
 						model.add data
 				else
 					return 405 # ReferenceError?

@@ -31,7 +31,7 @@ module.exports =
 					password: '123'
 					active: true
 		database:
-			url: 'mongodb://127.0.0.1/test'
+			url: 'mongodb://127.0.0.1/ko'
 			url2: 'mongodb://dvv:dvv@flame.mongohq.com:27068/irc'
 			hardLimit: 100
 		upload:

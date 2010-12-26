@@ -118,7 +118,7 @@ class Storage extends Database
 			delete result._id
 			deferred.resolve result
 		deferred.promise
-	update: (collection, document) ->
+	put: (collection, document) ->
 		document ?= {}
 		if document.id
 			document._id = document.id
@@ -172,7 +172,7 @@ class Storage extends Database
 	get: (collection, id) ->
 		return null unless id
 		@find collection, "id=#{id}"
-	patch: (collection, query, changes) ->
+	update: (collection, query, changes) ->
 		changes ?= {}
 		query = parse query
 		search = query.search
@@ -184,8 +184,14 @@ class Storage extends Database
 		unless changes.$set or changes.$unset
 			changes = $set: changes
 		#console.log 'PATCH???', changes
-		Storage.__super__.update.call @, collection, search, changes, (err, result) =>
+		super collection, search, changes, (err, result) =>
 			#console.log 'PATCH!', arguments
+			return deferred.reject URIError err.message if err
+			deferred.resolve result
+		deferred.promise
+	eval: (code) ->
+		deferred = defer()
+		super code, (err, result) =>
 			return deferred.reject URIError err.message if err
 			deferred.resolve result
 		deferred.promise
@@ -196,12 +202,13 @@ db = new Storage settings.database.url
 
 Store = (entity) ->
 	find: db.find.bind db, entity
-	get: db.get.bind db, entity
 	add: db.add.bind db, entity
-	remove: db.remove.bind db, entity
 	update: db.update.bind db, entity
-	patch: db.patch.bind db, entity
+	remove: db.remove.bind db, entity
+	get: db.get.bind db, entity
+	put: db.put.bind db, entity
 	drop: db.drop.bind db, entity
+	eval: db.eval.bind db
 
 module.exports =
 	Store: Store

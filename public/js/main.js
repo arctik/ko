@@ -33,6 +33,7 @@ var __props__ = {
 	Course: [
 		{name: 'cur', title: 'Валюта'},
 		{name: 'value', title: 'Курс'},
+		{name: 'date', title: 'На дату', format: 'date'}
 	]
 };
 

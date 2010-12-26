@@ -32,7 +32,7 @@ Facet = (model, expose) ->
 
 # expose collection accessors plus enlisted model methods, bound to the model itself
 PermissiveFacet = (model, expose) ->
-	Facet model, ['get', 'add', 'update', 'find', 'patch', 'remove'].concat(expose or [])
+	Facet model, ['get', 'add', 'update', 'find', 'remove', 'eval'].concat(expose or [])
 
 # expose collection getters plus enlisted model methods, bound to the model itself
 RestrictiveFacet = (model, expose) ->
@@ -103,7 +103,7 @@ model.User = Model 'User', Store('User'),
 				#console.log 'USER', user
 				user
 		]
-	patch: (query, changes) ->
+	update: (query, changes) ->
 		return URIError 'Please be more specific' unless query
 		id = parseQuery(query).normalize().pk
 		return URIError 'Can not set passwords in bulk' if changes.password isnt undefined and not id
@@ -116,7 +116,7 @@ model.User = Model 'User', Store('User'),
 			console.log 'PASSWORD SET TO', changes.password
 			changes.password = encryptPassword changes.password, changes.salt
 		# TODO: limit access rights in changes not higher than of current user
-		@__proto__.patch query, changes
+		@__proto__.update query, changes
 	login: (data, context) ->
 		#console.log 'LOGIN', arguments
 		data ?= {}
@@ -164,14 +164,14 @@ model.Affiliate = Compose.create model.User, {
 		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'affiliate').ne('_deleted', true).select('-password', '-salt')
-	patch: (query, changes) ->
+	update: (query, changes) ->
 		# veto some changes
 		#changes.type = undefined
-		@__proto__.patch Query(query).eq('type', 'affiliate'), changes
+		@__proto__.update Query(query).eq('type', 'affiliate'), changes
 	remove: (query) ->
 		q = Query(query)
 		throw TypeError 'Please, be more specific' unless q.args.length
-		@patch q.eq('type', 'affiliate'), active: false, _deleted: true
+		@update q.eq('type', 'affiliate'), active: false, _deleted: true
 }
 
 model.Merchant = Compose.create model.User, {
@@ -181,14 +181,14 @@ model.Merchant = Compose.create model.User, {
 		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'merchant').ne('_deleted', true).select('-password', '-salt')
-	patch: (query, changes) ->
+	update: (query, changes) ->
 		# veto some changes
 		#changes.type = undefined
-		@__proto__.patch Query(query).eq('type', 'merchant'), changes
+		@__proto__.update Query(query).eq('type', 'merchant'), changes
 	remove: (query) ->
 		q = Query(query)
 		throw TypeError 'Please, be more specific' unless q.args.length
-		@patch q.eq('type', 'merchant'), active: false, _deleted: true
+		@update q.eq('type', 'merchant'), active: false, _deleted: true
 }
 
 model.Admin = Compose.create model.User, {
@@ -198,14 +198,14 @@ model.Admin = Compose.create model.User, {
 		@__proto__.add data
 	find: (query) ->
 		@__proto__.find Query(query).eq('type', 'admin').ne('_deleted', true).select('-password', '-salt')
-	patch: (query, changes) ->
+	update: (query, changes) ->
 		# veto some changes
 		changes.type = undefined
-		@__proto__.patch Query(query).eq('type', 'admin'), changes
+		@__proto__.update Query(query).eq('type', 'admin'), changes
 	remove: (query) ->
 		q = Query(query)
 		throw TypeError 'Please, be more specific' unless q.args.length
-		@patch q.eq('type', 'admin'), active: false, _deleted: true
+		@update q.eq('type', 'admin'), active: false, _deleted: true
 }
 
 model.Session = Model 'Session', Store('Session'),
@@ -238,7 +238,7 @@ model.Session = Model 'Session', Store('Session'),
 				#context = facets[level] or {}
 				level = [level] unless level instanceof Array
 				context = Compose.create.apply null, [{}].concat(level.map (x) -> facets[x])
-				console.log 'EFFECTIVE FACET', level, context
+				#console.log 'EFFECTIVE FACET', level, context
 				Object.freeze Compose.call session, context: context
 				#session
 		]
@@ -253,19 +253,32 @@ model.Course = Model 'Course', Store('Course'),
 		console.log 'FETCHING'
 		deferred = defer()
 		wait parseXmlFeed("http://xurrency.com/#{settings.defaults.currency}/feed"), (data) =>
-			# archive previous data
-			wait @patch('', $unset: {fresh: 1}), () =>
-				# push fresh data
-				now = Date.now()
-				@add cur: settings.defaults.currency.toUpperCase(), value: 1.0, date: now, fresh: true
-				data.item?.forEach (x) =>
-					@add cur: x['dc:targetCurrency'], value: parseFloat(x['dc:value']['#']), date: now, fresh: true
-				deferred.resolve true
-				console.log 'FETCHED'
-				#delay 3000, model.Course.fetch.bind(model.Course)
+			now = (new Date()).toISOString()
+			@add cur: settings.defaults.currency.toUpperCase(), value: 1.0, date: now
+			data.item?.forEach (x) =>
+				@add cur: x['dc:targetCurrency'], value: parseFloat(x['dc:value']['#']), date: now
+			deferred.resolve true
+			console.log 'FETCHED'
+			#delay 3000, model.Course.fetch.bind(model.Course)
 		deferred.promise
-	find: (query) ->
+	update: (query, changes) ->
+		changes ?= {}
+		changes.date = Date.now()
+		@__proto__.update query, changes
+	find0: (query) ->
 		@__proto__.find Query(query).eq('fresh', true)
+	find: (query) ->
+		wait @__proto__.find(query), (result) =>
+			now = Date.now()
+			a = U(result).chain().reduce((memo, item) ->
+				id = item.cur
+				#console.log "COU? #{id}", memo[id]?.date, item.date
+				memo[id] = item if not memo[id] or item.date > memo[id].date
+				#console.log "COU! #{id}", memo[id]
+				memo
+			, {}).toArray().value()
+			console.log a
+			a
 
 ######################################
 ################### Tests

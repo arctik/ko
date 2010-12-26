@@ -114,6 +114,7 @@
 		<div class="menu grid_12 alpha">
 			<a href="#Bar">Bar</a>
 			<a href="#Course">Course</a>
+			<a href="#Course/fetch">Refresh courses</a>
 		</div>
 		<form><input class="grid_4 omega" type="search" /></form>
 		<% } %>
@@ -176,8 +177,8 @@ Cursus est risus hendrerit et <br>
 						<td>
 							<% if (prop.name === 'id') { %>
 								<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=item.id%></a>
-							<% } else { %>
-								<%=item[prop.name]%>
+							<% } else { var val = item[prop.name]; if (prop.format === 'date') val = new Date(val).toLocaleString(); %>
+								<%=val%>
 							<% } %>
 						</td>
 						<% }); %>
