@@ -1374,7 +1374,12 @@ if (!this.JSON) {
     this.set(attributes, {silent : true});
     this._changed = false;
     this._previousAttributes = _.clone(this.attributes);
-    if (options && options.collection) this.collection = options.collection;
+    if (options && options.collection) {
+        this._removeFromCollection = options.collection.remove;
+        this.urlRoot = getUrl(options.collection);
+        //console.log('URLROOT', this.urlRoot);
+        // DVV: what else?
+    }
     this.initialize(attributes, options);
   };
 
@@ -1535,7 +1540,8 @@ if (!this.JSON) {
       var model = this;
       var success = options.success;
       options.success = function(resp) {
-        if (model.collection) model.collection.remove(model);
+        //if (model.collection) model.collection.remove(model);
+        if (model._removeFromCollection) model._removeFromCollection(model);
         if (success) success(model, resp);
       };
       options.error = wrapError(options.error, model, options);
@@ -1548,7 +1554,8 @@ if (!this.JSON) {
     // that will be called.
     url : function() {
       // DVV: URL
-      var base = getUrl(this.collection) || this.urlRoot || urlError();
+      //var base = getUrl(this.collection) || this.urlRoot || urlError();
+      var base = this.urlRoot || urlError();
       if (this.isNew()) return base;
       return base + (base.charAt(base.length - 1) == '/' ? '' : '/') + this.id;
     },
@@ -1762,7 +1769,9 @@ if (!this.JSON) {
       if (!(model instanceof Backbone.Model)) {
         model = new this.model(model, {collection: coll});
       } else {
-        model.collection = coll;
+        //model.collection = coll;
+        model._removeFromCollection = coll.remove;
+        model.urlRoot = getUrl(coll);
       }
       var success = options.success;
       options.success = function(nextModel, resp) {
@@ -1804,7 +1813,9 @@ if (!this.JSON) {
       if (already) throw new Error(["Can't add the same model to a set twice", already.id]);
       this._byId[model.id] = model;
       this._byCid[model.cid] = model;
-      model.collection = this;
+      //model.collection = this;
+      model._removeFromCollection = this.remove;
+      model.urlRoot = getUrl(this);
       var index = this.comparator ? this.sortedIndex(model, this.comparator) : this.length;
       this.models.splice(index, 0, model);
       model.bind('all', this._onModelEvent);
@@ -1830,7 +1841,9 @@ if (!this.JSON) {
 
     // Internal method to remove a model's ties to a collection.
     _removeReference : function(model) {
-      delete model.collection;
+      //delete model.collection;
+      delete model._removeFromCollection;
+      delete model.urlRoot; // ???
       model.unbind('all', this._onModelEvent);
     },
 

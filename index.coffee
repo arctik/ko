@@ -253,7 +253,7 @@ model.Course = Model 'Course', Store('Course'),
 		console.log 'FETCHING'
 		deferred = defer()
 		wait parseXmlFeed("http://xurrency.com/#{settings.defaults.currency}/feed"), (data) =>
-			now = (new Date()).toISOString()
+			now = Date.now()
 			@add cur: settings.defaults.currency.toUpperCase(), value: 1.0, date: now
 			data.item?.forEach (x) =>
 				@add cur: x['dc:targetCurrency'], value: parseFloat(x['dc:value']['#']), date: now
@@ -265,20 +265,19 @@ model.Course = Model 'Course', Store('Course'),
 		changes ?= {}
 		changes.date = Date.now()
 		@__proto__.update query, changes
-	find0: (query) ->
-		@__proto__.find Query(query).eq('fresh', true)
 	find: (query) ->
-		wait @__proto__.find(query), (result) =>
-			now = Date.now()
-			a = U(result).chain().reduce((memo, item) ->
+		wait @__proto__.find(), (result) ->
+			#console.log 'R', result
+			# pk in request -- just serve result
+			#return result unless result instanceof Array
+			latest = U(result).chain().reduce((memo, item) ->
 				id = item.cur
-				#console.log "COU? #{id}", memo[id]?.date, item.date
 				memo[id] = item if not memo[id] or item.date > memo[id].date
-				#console.log "COU! #{id}", memo[id]
 				memo
 			, {}).toArray().value()
-			console.log a
-			a
+			found = U.query latest, query
+			found = found[0] or null if Query(query).normalize().pk
+			found
 
 ######################################
 ################### Tests

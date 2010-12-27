@@ -31,7 +31,7 @@ var __props__ = {
 		{name: 'email', title: 'Мыло'}
 	],
 	Course: [
-		{name: 'cur', title: 'Валюта'},
+		{name: 'cur', title: 'Валюта', pk: true},
 		{name: 'value', title: 'Курс'},
 		{name: 'date', title: 'На дату', format: 'date'}
 	]
@@ -221,6 +221,7 @@ var App = Backbone.View.extend({
 	el: $('#content'),
 	template: _.partial('content'),
 	render: function(){
+		console.log('APPRENDER', this.model.toJSON());
 		this.el.html(this.template(this.model.toJSON()));
 		return this;
 	},
@@ -243,7 +244,7 @@ var EntityView = Backbone.View.extend({
 			//if (!query.selectObj.id) selectedProps.unshift(_.detect(props, function(x){return x.name === 'id'}));
 			props = selectedProps;
 		}
-		//console.log('RENDER', query, props);
+		//console.log('RENDER ENTITY', items);
 		$(this.el).html(_.partial([name+'-list', 'list'], {
 			name: name,
 			items: items,
@@ -278,7 +279,7 @@ var EntityView = Backbone.View.extend({
 		'click .pager a': 'gotoPage',
 		'click .action-remove': 'removeSelected',
 		'click .action-add': 'addNew',
-		//'click .action-open': 'open'
+		'click .action-open': 'open'
 		//'submit form': 'act'
 	},
 	removeSelected: function(e){
@@ -294,12 +295,15 @@ var EntityView = Backbone.View.extend({
 		return false;
 	},
 	open: function(e){
-		var url = $(e.target).attr('href');
 		var id = $(e.target).attr('rel');
-		var item = this.model.get(id).toJSON();
-		$(this.el).find('.list-item-inspector').html(JSON.stringify(item));
-		Backbone.history.saveLocation(url);
-		console.log('OPEN', item);
+		//var url = $(e.target).attr('href');
+		var item = this.model.get(id);
+		item.fetch({
+			success: function(){
+				model.get('instance').set(item.toJSON());
+			}
+		});
+		//console.log('OPEN', item);
 		return false;
 	},
 	reload: function(){
@@ -324,7 +328,9 @@ var EntityView = Backbone.View.extend({
 		e.preventDefault();
 		var fn = $(e.target).attr('checked');
 		// TODO: reflect all-selected status in master checkbox
-		$(e.target).parents('.action-select-row:first').toggleClass('selected', fn);
+		var id = $(e.target).parents('.action-select-row:first').toggleClass('selected', fn).attr('rel');
+		//
+		console.log('SELECTED', id);
 	},
 	// gmail-style selection, shift-click selects the sequence
 	selectSequence: function(e){
@@ -441,6 +447,26 @@ var EntityView = Backbone.View.extend({
 	}
 });
 
+var EditorView = Backbone.View.extend({
+	model: model.get('instance'),
+	render: function(){
+		var name = 'Course';
+		console.log('INSPECT', this.model.toJSON());
+		$(this.el).html(_.partial([name+'-form', 'form'], {
+			data: this.model.toJSON()
+		})).appendTo($('.list-item-inspector'));
+		return this;
+	},
+	events: {
+		//'submit form': 'act'
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+		this.model.bind('change', this.render);
+		this.model.bind('refresh', this.render);
+	}
+});
+
 	var Controller = Backbone.Controller.extend({
 		routes: {
 			'contact': 'contactUs'
@@ -455,7 +481,8 @@ var EntityView = Backbone.View.extend({
 				//m.url = entity + '?' + query;
 				m.url = entity;
 				m.props = __props__[m.name];
-				m.query = RQL.parse(query).normalize({hardLimit: model.get('user').pageSize || 10, clear: _.pluck(m.props, 'name')});
+				//m.query = RQL.parse(query).normalize({hardLimit: model.get('user').pageSize || 10, clear: _.pluck(m.props, 'name')});
+				m.query = RQL.parse(query).normalize({clear: _.pluck(m.props, 'name')});
 				console.log('QUERY', this, arguments, m.query);
 				m.fetch({
 					url: entity + (query ? '?' + query : ''),
@@ -464,6 +491,7 @@ var EntityView = Backbone.View.extend({
 					}
 				});
 			});
+			/*
 			// instance viewer
 			this.route(/^([^/?]+)\/([^/?]+)$/, 'instance', function(entity, id){
 				var m = model.get('instance');
@@ -473,6 +501,7 @@ var EntityView = Backbone.View.extend({
 				m.props = __props__[m.name];
 				m.fetch({url: entity + '/' + id});
 			});
+			*/
 		},
 		contactUs: function(){
 			console.log('CONTACTUS');
@@ -490,6 +519,7 @@ var EntityView = Backbone.View.extend({
 		new FooterApp;
 		new App;
 		new EntityView;
+		new EditorView;
 		window.model.set(session);
 
 		// let the history begin

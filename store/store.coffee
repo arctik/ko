@@ -155,7 +155,7 @@ class Storage extends Database
 		#console.log 'FIND!', query
 		# limit the limit
 		query.meta.limit = 1 if query.terms.pk
-		query.meta.limit = @limit if @limit < query.meta.limit
+		#query.meta.limit = @limit if @limit < query.meta.limit
 		deferred = defer()
 		super collection, query.search, query.meta, (err, result) =>
 			#console.log 'FOUND', arguments
