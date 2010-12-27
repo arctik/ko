@@ -238,7 +238,7 @@ model.Session = Model 'Session', Store('Session'),
 				#context = facets[level] or {}
 				level = [level] unless level instanceof Array
 				context = Compose.create.apply null, [{}].concat(level.map (x) -> facets[x])
-				#console.log 'EFFECTIVE FACET', level, context
+				console.log 'EFFECTIVE FACET', level, context
 				Object.freeze Compose.call session, context: context
 				#session
 		]
@@ -268,8 +268,6 @@ model.Course = Model 'Course', Store('Course'),
 	find: (query) ->
 		wait @__proto__.find(), (result) ->
 			#console.log 'R', result
-			# pk in request -- just serve result
-			#return result unless result instanceof Array
 			latest = U(result).chain().reduce((memo, item) ->
 				id = item.cur
 				memo[id] = item if not memo[id] or item.date > memo[id].date

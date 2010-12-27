@@ -11,7 +11,7 @@ kriszyp/promised-io/lib:promised-io
 kriszyp/compose/lib/compose.js:compose.js
 documentcloud/underscore/underscore.js:underscore.js
 douglascrockford/JSON-js/json2.js:json2.js
-dvv/backbone/backbone.js:backbone.js
+documentcloud/backbone/backbone.js:backbone.js
 jquery/jquery-tmpl/jquery.tmpl.js:jquery.tmpl.js
 dvv/rql/lib:rql
 dvv/node-formidable/lib/formidable:formidable

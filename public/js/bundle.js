@@ -839,8 +839,14 @@ if (!this.JSON) {
   // we need this function. Return the position of the first occurrence of an
   // item in an array, or -1 if the item is not included in the array.
   // Delegates to **ECMAScript 5**'s native `indexOf` if available.
-  _.indexOf = function(array, item) {
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = function(array, item, isSorted) {
     if (array == null) return -1;
+    if (isSorted) {
+      var i = _.sortedIndex(array, item);
+      return array[i] === item ? i : -1;
+    }
     if (nativeIndexOf && array.indexOf === nativeIndexOf) return array.indexOf(item);
     for (var i = 0, l = array.length; i < l; i++) if (array[i] === item) return i;
     return -1;
@@ -1067,12 +1073,12 @@ if (!this.JSON) {
   // Is a given value an array?
   // Delegates to ECMA5's native Array.isArray
   _.isArray = nativeIsArray || function(obj) {
-    return !!(obj && obj.concat && obj.unshift && !obj.callee);
+    return toString.call(obj) === '[object Array]';
   };
 
   // Is a given variable an arguments object?
   _.isArguments = function(obj) {
-    return !!(obj && obj.callee);
+    return !!(obj && hasOwnProperty.call(obj, 'callee'));
   };
 
   // Is a given value a function?
@@ -1090,10 +1096,10 @@ if (!this.JSON) {
     return !!(obj === 0 || (obj && obj.toExponential && obj.toFixed));
   };
 
-  // Is the given value NaN -- this one is interesting. NaN != NaN, and
-  // isNaN(undefined) == true, so we make sure it's a number first.
+  // Is the given value `NaN`? `NaN` happens to be the only value in JavaScript
+  // that does not equal itself.
   _.isNaN = function(obj) {
-    return toString.call(obj) === '[object Number]' && isNaN(obj);
+    return obj !== obj;
   };
 
   // Is a given value a boolean?
@@ -1374,12 +1380,7 @@ if (!this.JSON) {
     this.set(attributes, {silent : true});
     this._changed = false;
     this._previousAttributes = _.clone(this.attributes);
-    if (options && options.collection) {
-        this._removeFromCollection = options.collection.remove;
-        this.urlRoot = getUrl(options.collection);
-        //console.log('URLROOT', this.urlRoot);
-        // DVV: what else?
-    }
+    if (options && options.collection) this.collection = options.collection;
     this.initialize(attributes, options);
   };
 
@@ -1398,7 +1399,6 @@ if (!this.JSON) {
     initialize : function(){},
 
     // Return a copy of the model's `attributes` object.
-    // DVV: toEscapedJSON() for efficient use in templates?
     toJSON : function() {
       return _.clone(this.attributes);
     },
@@ -1540,8 +1540,7 @@ if (!this.JSON) {
       var model = this;
       var success = options.success;
       options.success = function(resp) {
-        //if (model.collection) model.collection.remove(model);
-        if (model._removeFromCollection) model._removeFromCollection(model);
+        if (model.collection) model.collection.remove(model);
         if (success) success(model, resp);
       };
       options.error = wrapError(options.error, model, options);
@@ -1553,9 +1552,7 @@ if (!this.JSON) {
     // using Backbone's restful methods, override this to change the endpoint
     // that will be called.
     url : function() {
-      // DVV: URL
-      //var base = getUrl(this.collection) || this.urlRoot || urlError();
-      var base = this.urlRoot || urlError();
+      var base = getUrl(this.collection) || this.urlRoot || urlError();
       if (this.isNew()) return base;
       return base + (base.charAt(base.length - 1) == '/' ? '' : '/') + this.id;
     },
@@ -1769,9 +1766,7 @@ if (!this.JSON) {
       if (!(model instanceof Backbone.Model)) {
         model = new this.model(model, {collection: coll});
       } else {
-        //model.collection = coll;
-        model._removeFromCollection = coll.remove;
-        model.urlRoot = getUrl(coll);
+        model.collection = coll;
       }
       var success = options.success;
       options.success = function(nextModel, resp) {
@@ -1813,9 +1808,7 @@ if (!this.JSON) {
       if (already) throw new Error(["Can't add the same model to a set twice", already.id]);
       this._byId[model.id] = model;
       this._byCid[model.cid] = model;
-      //model.collection = this;
-      model._removeFromCollection = this.remove;
-      model.urlRoot = getUrl(this);
+      model.collection = this;
       var index = this.comparator ? this.sortedIndex(model, this.comparator) : this.length;
       this.models.splice(index, 0, model);
       model.bind('all', this._onModelEvent);
@@ -1841,9 +1834,7 @@ if (!this.JSON) {
 
     // Internal method to remove a model's ties to a collection.
     _removeReference : function(model) {
-      //delete model.collection;
-      delete model._removeFromCollection;
-      delete model.urlRoot; // ???
+      delete model.collection;
       model.unbind('all', this._onModelEvent);
     },
 
@@ -2155,7 +2146,7 @@ if (!this.JSON) {
       if (!this.el) {
         var attrs = {};
         if (this.id) attrs.id = this.id;
-        if (this.className) attrs["class"] = this.className;
+        if (this.className) attrs['class'] = this.className;
         this.el = this.make(this.tagName, attrs);
       } else if (_.isString(this.el)) {
         this.el = $(this.el).get(0);
@@ -2203,11 +2194,8 @@ if (!this.JSON) {
   // it difficult to read the body of `PUT` requests.
   Backbone.sync = function(method, model, options) {
     var type = methodMap[method];
-    var modelJSON = null;
-    if (model && (method === 'create' || method === 'update')) {
-      if (model.toJSON) modelJSON = model.toJSON(); else modelJSON = model;
-      if (modelJSON && !_.isString(modelJSON)) modelJSON = JSON.stringify(modelJSON);
-    }
+    var modelJSON = (method === 'create' || method === 'update') ?
+                    JSON.stringify(model.toJSON()) : null;
 
     // Default JSON-request options.
     var params = _.extend({
@@ -2219,8 +2207,8 @@ if (!this.JSON) {
       processData:  false
     }, options);
 
-    // Check for URL
-    params.url || urlError();
+    // Ensure that we have a URL.
+    if (!params.url) urlError();
 
     // For older servers, emulate JSON by encoding the request into an HTML-form.
     if (Backbone.emulateJSON) {
@@ -2236,7 +2224,7 @@ if (!this.JSON) {
         if (Backbone.emulateJSON) params.data._method = type;
         params.type = 'POST';
         params.beforeSend = function(xhr) {
-          xhr.setRequestHeader("X-HTTP-Method-Override", type);
+          xhr.setRequestHeader('X-HTTP-Method-Override', type);
         };
       }
     }
@@ -2244,7 +2232,6 @@ if (!this.JSON) {
     // Make the request.
     $.ajax(params);
   };
-
 
   // Helpers
   // -------
@@ -2313,7 +2300,7 @@ if (!this.JSON) {
 
   // Helper function to escape a string for HTML rendering.
   var escapeHTML = function(string) {
-    return String(string).replace(/&(?!\w+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return string.replace(/&(?!\w+;)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
 
 }).call(this);

@@ -113,8 +113,10 @@
 		<% if (user.id) { %>
 		<div class="menu grid_12 alpha">
 			<a href="#Bar">Bar</a>
-			<a href="#Course">Course</a>
-			<a href="#Course/fetch">Refresh courses</a>
+			<a href="#Course">Courses</a>
+			<a href="#Affiliate">Affiliates</a>
+			<a href="#Merchant">Merchants</a>
+			<a href="#Admin">Admins</a>
 		</div>
 		<form><input class="grid_4 omega" type="search" /></form>
 		<% } %>
@@ -144,9 +146,7 @@ Cursus est risus hendrerit et <br>
 	</script>
 
 	<script id="tmpl-list" type="text/x-jquery-tmpl">
-		<div class="list-actions grid_3 alpha">
-			HERE GO CUSTOM ACTIONS
-		</div>
+		<div class="list-actions grid_3 alpha"><%=_.partial([name+'-actions', 'actions'],{data:{}})||'&nbsp;'%></div>
 		<div class="list grid_10">
 			<select class="actions">
 				<option></option>
@@ -207,13 +207,22 @@ Cursus est risus hendrerit et <br>
 </select>
 </div>
 		</div>
-		<div class="list-item-inspector grid_3 omega">INSPECTOR</div>
+		<div class="list-item-inspector grid_3 omega"><%=_.partial([name+'-form', 'form'],{data:{}})%></div>
 	</script>
 
+<script id="tmpl-Course-actions" type="text/x-jquery-tmpl">
+<ul class="">
+	<li><a href="#Course/fetch">Refresh</a></li>
+</ul>
+</script>
+
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
-<form>
-	<div class="form-field"><label>Валюта: <input type="text" name="cur" value="<%=escape(data.cur)%>" /></label></div>
-	<div class="form-field"><label>Курс: <input type="text" name="value" value="<%=escape(data.value)%>" /></label></div>
+<form id="inspector">
+	<div class="form-field"><label>Валюта: <input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
+	<div class="form-field"><label>Курс: <input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
+	<div class="buttons">
+		<button type="submit">Отправить</button>
+	</div>
 </form>
 </script>
 
