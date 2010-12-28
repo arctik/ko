@@ -32,7 +32,7 @@ Facet = (model, expose) ->
 
 # expose collection accessors plus enlisted model methods, bound to the model itself
 PermissiveFacet = (model, expose) ->
-	Facet model, ['get', 'add', 'update', 'find', 'remove', 'eval'].concat(expose or [])
+	Facet model, ['get', 'add', 'update', 'put', 'find', 'remove', 'eval'].concat(expose or [])
 
 # expose collection getters plus enlisted model methods, bound to the model itself
 RestrictiveFacet = (model, expose) ->

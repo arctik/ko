@@ -207,7 +207,7 @@ Cursus est risus hendrerit et <br>
 </select>
 </div>
 		</div>
-		<div class="list-item-inspector grid_3 omega"><%=_.partial([name+'-form', 'form'],{data:{}})%></div>
+		<div id="inspector" class="list-item-inspector grid_3 omega"></div>
 	</script>
 
 <script id="tmpl-Course-actions" type="text/x-jquery-tmpl">
@@ -217,9 +217,10 @@ Cursus est risus hendrerit et <br>
 </script>
 
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
-<form id="inspector">
-	<div class="form-field"><label>Валюта: <input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
-	<div class="form-field"><label>Курс: <input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
+<form>
+	<div class="form-field"><label>ID<input type="text" name="cur" value="<%=escape(data.id||'')%>" readonly="readonly" /></label></div>
+	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
+	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
 	<div class="buttons">
 		<button type="submit">Отправить</button>
 	</div>
