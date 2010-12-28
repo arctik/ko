@@ -122,11 +122,11 @@
 		<% } %>
 	</script>
 
-	<script id="tmpl-content" type="text/x-jquery-tmpl">
-		<% if (user.id) { %>
-		<div id="entity"></div>
-		<% } else { %>
-		<div>
+<script id="tmpl-content" type="text/x-jquery-tmpl">
+	<% if (user.id) { %>
+	<div id="entity"></div>
+	<% } else { %>
+	<div>
 Lorem ipsum dolor sit amet <br>
 Consectetuer lacinia volutpat vestibulum id <br>
 Vitae nulla penatibus facilisi id <br>
@@ -141,9 +141,9 @@ Ut felis urna eros Curabitur <br>
 Sapien dolor Phasellus lorem Duis <br>
 Pellentesque at pretium lacus ornare <br>
 Cursus est risus hendrerit et <br>
-		</div>
-		<% } %>
-	</script>
+	</div>
+	<% } %>
+</script>
 
 	<script id="tmpl-list" type="text/x-jquery-tmpl">
 		<div class="list-actions grid_3 alpha"><%=_.partial([name+'-actions', 'actions'],{data:{}})||'&nbsp;'%></div>
@@ -173,7 +173,7 @@ Cursus est risus hendrerit et <br>
 				</thead>
 				<tbody class="action-select-list"><% _.each(items, function(item){ %>
 					<tr class="action-select-row" rel="<%=item.id%>">
-						<td class="actions"><input type="checkbox" class="action-select" /></td>
+						<td class="actions"><%=Date.now()%><input type="checkbox" class="action-select" /></td>
 						<% _.each(props, function(prop){ var val = item[prop.name]; if (prop.format === 'date') val = JSON.stringify(new Date(val)); %>
 						<td>
 						<% if (prop.pk) { %>

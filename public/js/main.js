@@ -26,7 +26,7 @@ _.mixin({
 
 var __props__ = {
 	Bar: [
-		{name: 'user', title: 'Логин'},
+		{name: 'user', title: 'Логин', pk: true},
 		{name: 'pass', title: 'Пароль'},
 		{name: 'email', title: 'Мыло'}
 	],
@@ -229,12 +229,14 @@ var NavApp = Backbone.View.extend({
 
 var EntityView = Backbone.View.extend({
 	_lastClickedRow: 0,
+	_selected: [],
 	render: function(){
-		console.log('VIEWRENDER', this);
-		var name = this.model.name;
+		var m = model.get('entity');
+		console.log('VIEWRENDER', this, m.query+'');
+		var name = m.name;
 		var schema = MODELS[name] && MODELS[name].schema || [{name: 'id', title: 'id'}];
-		var items = this.model.toJSON();
-		var query = this.query = this.model.query.normalize({clear: _.pluck(schema, 'name')});
+		var items = m.toJSON();
+		var query = this.query = RQL.Query(m.query+'').normalize({clear: _.pluck(schema, 'name')});
 		var props = schema;
 		if (query.selectArr.length) {
 			var selectedProps = _.map(query.selectObj, function(show, name){if (show) return _.detect(props, function(x){return x.name === name});});
@@ -245,15 +247,17 @@ var EntityView = Backbone.View.extend({
 		$(this.el).html(_.partial([name+'-list', 'list'], {
 			name: name,
 			items: items,
+			//selected: _selected,
 			query: query,
 			props: props
-		}));//.appendTo($('#entity'));
+		}));
+		this.delegateEvents();
 
 		// render entity explorer to content element
-		var instance = model.get('instance');
-		if (instance) {
-			$('#inspector').replaceWith(this.inspector.render().el);
-		}
+		//var instance = model.get('instance');
+		//if (instance) {
+		//	$('#inspector').replaceWith(this.inspector.render().el);
+		//}
 
 		// N.B. workaround: textchange event can not be delegated...
 		// reload the View after a 1 sec timeout elapsed after the last textchange event on filters
@@ -286,23 +290,25 @@ var EntityView = Backbone.View.extend({
 		//'submit form': 'act'
 	},
 	removeSelected: function(e){
+		var m = model.get('entity');
 		// get ids from selected containers
 		var ids = []; $(this.el).find('.action-select-row.selected').each(function(i, row){ids.push($(row).attr('rel'))});
 		//console.log('REMOVE', ids, this.model);
-		this.model.destroyMany(ids);
+		m.destroyMany(ids);
 		return false;
 	},
 	addNew: function(e){
-		this.model.create();
+		var m = model.get('entity');
+		m.create();
 		console.log('ADD!');
 		return false;
 	},
 	open: function(e){
+		var m = model.get('entity');
 		var id = $(e.target).attr('rel');
-		var item = this.model.get(id);
+		var item = m.get(id);
 		console.log('OPEN?', item);
-		//model.set({instance: item}, {silent: true});
-		//model.get('instance').change();
+		//model.set({instance: item});
 		//model.set({id: id}, {silent: true});
 		return false;
 		//var url = $(e.target).attr('href');
@@ -408,7 +414,8 @@ var EntityView = Backbone.View.extend({
 		return false;
 	},
 	gotoPage11111111111111: function(e){
-		var items = this.model.toJSON();
+		var m = model.get('entity');
+		var items = m.toJSON();
 		var query = this.query;
 		//console.log('PAGE', query);
 		var limit = query.limit[0];
@@ -430,7 +437,8 @@ var EntityView = Backbone.View.extend({
 		return false;
 	},
 	gotoPage: function(e){
-		var items = this.model.toJSON();
+		var m = model.get('entity');
+		var items = m.toJSON();
 		var query = this.query;
 		var lastSkip = query.limit[1];
 		var delta = query.limit[0]; if (delta === Infinity) delta = 100;
@@ -449,14 +457,19 @@ var EntityView = Backbone.View.extend({
 	initialize: function(){
 		_.bindAll(this, 'render');
 		// re-render upon model changes
-		this.model.bind('change', this.render);
-		this.model.bind('add', this.render);
-		this.model.bind('remove', this.render);
-		this.model.bind('refresh', this.render);
+		var m = model.get('entity');
+		m.bind('change', this.render);
+		m.bind('add', this.render);
+		m.bind('remove', this.render);
+		m.bind('refresh', this.render);
+		m.bind('all', function(){
+			console.log('ENTITYREFRESH?', arguments);
+		});
+		console.log('VIEWINIT', this.el);
 		// create instance viewer/editor
 		//var instance = this.model.get('instance');
-		var instance = model.get('instance');
-		this.inspector = new EditorView({model: instance});
+		//var instance = model.get('instance');
+		//this.inspector = new EditorView({model: instance});
 	}
 });
 
@@ -498,10 +511,7 @@ var App = Backbone.View.extend({
 		// render content element
 		this.el.html(this.template(this.model.toJSON()));
 		// render entity explorer to content element
-		var entity = this.model.get('entity');
-		if (entity && entity.url) {
-			$('#entity').replaceWith(this.view.render().el);
-		}
+		$('#entity').replaceWith(this.view.render().el);
 		return this;
 	},
 	initialize: function(){
@@ -509,10 +519,20 @@ var App = Backbone.View.extend({
 		// re-render upon model change
 		this.model.bind('change', this.render);
 		// create entity viewer
-		var entity = this.model.get('entity');
-		this.view = new EntityView({model: entity});
+		//var entity = this.model.get('entity');
+		//entity.bind('refresh', this.render);
+		//this.view = new EntityView({model: entity});
+		this.view = new EntityView; //({el: this.el.find('#entity')[0]});
 	}
 });
+
+/*
+
+change:user -> render, put view
+change:entity -> put view
+route:entity -> entity.refresh -> ???
+
+*/
 
 var Controller = Backbone.Controller.extend({
 	routes: {
@@ -522,6 +542,7 @@ var Controller = Backbone.Controller.extend({
 		// entity viewer
 		this.route(/^([^/?]+)(?:\?(.*))?$/, 'entity', function(entity, query){
 			var m = model.get('entity');
+			//var m = new Entity();//COLLECTIONS[entity];
 			//console.log('ROUTE', arguments);
 			m.name = entity;
 			m.url = entity;
@@ -533,6 +554,7 @@ var Controller = Backbone.Controller.extend({
 					alert('FAILED: ' + xhr.responseText);
 				},
 				success: function(data){
+					//model.set({entity: m});
 					console.log('SUCC', m);
 				}
 			});

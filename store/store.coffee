@@ -124,11 +124,13 @@ class Storage extends Database
 			document._id = document.id
 			delete document.id
 		deferred = defer()
-		#console.log 'UPDATE?', document
+		#console.log 'PUT?', document
 		# TODO: _deleted: true --> means remove?
-		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, new: true}, (err, result) =>
-			#console.log 'UPDATE!', arguments
+		Storage.__super__.modify.call @, collection, {query: {_id: document._id}, update: document, 'new': true}, (err, result) =>
+			#console.log 'PUT!', arguments
 			return deferred.reject null if err
+			# TODO: why new: true is noop???
+			#result = document
 			result.id = result._id
 			delete result._id
 			deferred.resolve result
