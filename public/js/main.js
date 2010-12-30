@@ -360,15 +360,21 @@ var EntityView = Backbone.View.extend({
 		// TODO: reflect all-selected status in master checkbox
 		var id = $(e.target).parents('.action-select-row:first').toggleClass('selected', fn).attr('rel');
 		//
-		var ids = this.getSelected();
-		//console.log('SELECTED', ids);
-		this.inspect(ids);
+		if (!this._inBulkSelect) {
+			this.selectBulk();
+		}
+		/*
 		return;
 		if (ids.length === 1) {
 			id = ids[0];
 			//var row = $(e.target).parents('.action-select-list:first').find('.action-open[rel='+id+']');
 			this.inspect(id);
-		}
+		}*/
+	},
+	selectBulk: function(){
+		var ids = this.getSelected();
+		//console.log('SELECTED', ids);
+		this.inspect(ids);
 	},
 	// gmail-style selection, shift-click selects the sequence
 	selectSequence: function(e){
@@ -381,13 +387,25 @@ var EntityView = Backbone.View.extend({
 			var start = Math.min(first, last);
 			var end = Math.max(first, last);
 			var fn = $(t).attr('checked');
-			all.slice(start, end+1).attr('checked', fn).change();
+			try {
+				this._inBulkSelect = true;
+				all.slice(start, end+1).attr('checked', fn).change();
+			} finally {
+				this._inBulkSelect = false;
+				this.selectBulk();
+			}
 		}
 		this._lastClickedRow = first;
 	},
 	// master checkbox checks/unchecks all siblings
 	selectAll: function(e){
-		$(this.el).find('.action-select:enabled').attr('checked', $(e.target).attr('checked')).change();
+		try {
+			this._inBulkSelect = true;
+			$(this.el).find('.action-select:enabled').attr('checked', $(e.target).attr('checked')).change();
+		} finally {
+			this._inBulkSelect = false;
+			this.selectBulk();
+		}
 	},
 	// execute a command from commands combo
 	command: function(e){
@@ -399,7 +417,13 @@ var EntityView = Backbone.View.extend({
 			case 'none':
 			case 'toggle':
 				var fn = cmd === 'all' ? true : cmd === 'none' ? false : function(){return !this.checked;};
-				$(this.el).find('.action-select:enabled').attr('checked', fn).change();
+				try {
+					this._inBulkSelect = true;
+					$(this.el).find('.action-select:enabled').attr('checked', fn).change();
+				} finally {
+					this._inBulkSelect = false;
+					this.selectBulk();
+				}
 				break;
 		}
 		$(e.target).val(null);
@@ -501,6 +525,7 @@ var EditorView = Backbone.View.extend({
 		var name = 'Course';
 		console.log('INSPECT', m.toJSON());
 		$(this.el).html(_.partial([name+'-form', 'form'], {
+			model: m,
 			data: m.toJSON()
 		})).appendTo($('#inspector'));
 		this.delegateEvents();
@@ -529,7 +554,7 @@ var EditorView = Backbone.View.extend({
 				//console.log('TOSAVE!', m, props);
 				m.collection.updateMany(m.ids, props);
 			} else {
-				m.save(props);
+				m.collection.create(props);
 			}
 		} catch (x) {
 			console.log('EXC', x, m, props);

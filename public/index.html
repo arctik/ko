@@ -191,8 +191,6 @@ Cursus est risus hendrerit et <br>
 				<% }); %></tbody>
 				<tfoot></tfoot>
 			</table>
-			<button class="action-remove">Delete</button>
-			<button class="action-add">Add new</button>
 			<div>
 				Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
 			</div>
@@ -222,7 +220,17 @@ Cursus est risus hendrerit et <br>
 	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
 	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
 	<div class="buttons">
-		<button type="submit"><% if (data.id) { %>Отправить<% } else { %>Добавить<% } %></button>
+		<% console.log('INSPEKTIEREN:', model); %>
+		<!--button type="submit"><% if (data.id) { %>Сохранить<% } else if (model.ids && model.ids.length) { %>Изменить<% } else { %>Добавить<% } %></button-->
+		<% if (data.id) { %>
+		<button type="submit">Сохранить</button>
+		<button class="action-remove">Удалить</button>
+		<% } else if (model.ids && model.ids.length) { %>
+		<button type="submit">Изменить</button>
+		<button class="action-remove">Удалить</button>
+		<% } else { %>
+		<button type="submit">Добавить</button>
+		<% } %>
 	</div>
 </form>
 </script>
