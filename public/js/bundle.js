@@ -2802,11 +2802,16 @@ if (!this.JSON) {
  (function(a){a.event.special.textchange={setup:function(){a(this).data("lastValue",this.contentEditable==="true"?a(this).html():a(this).val());a(this).bind("keyup.textchange",a.event.special.textchange.handler);a(this).bind("cut.textchange paste.textchange input.textchange",a.event.special.textchange.delayedHandler)},teardown:function(){a(this).unbind(".textchange")},handler:function(){a.event.special.textchange.triggerIfChanged(a(this))},delayedHandler:function(){var b=a(this);setTimeout(function(){a.event.special.textchange.triggerIfChanged(b)},
  25)},triggerIfChanged:function(b){var c=b[0].contentEditable==="true"?b.html():b.val();if(c!==b.data("lastValue")){b.trigger("textchange",b.data("lastValue"));b.data("lastValue",c)}}};a.event.special.hastext={setup:function(){a(this).bind("textchange",a.event.special.hastext.handler)},teardown:function(){a(this).unbind("textchange",a.event.special.hastext.handler)},handler:function(b,c){c===""&&c!==a(this).val()&&a(this).trigger("hastext")}};a.event.special.notext={setup:function(){a(this).bind("textchange",
  a.event.special.notext.handler)},teardown:function(){a(this).unbind("textchange",a.event.special.notext.handler)},handler:function(b,c){a(this).val()===""&&a(this).val()!==c&&a(this).trigger("notext")}}})(jQuery);;(function($){
-	$.fn.serializeObject = function(){
+	$.fn.serializeObject = function(options){
+		options = $.extend({
+			filterEmpty: false
+		}, options || {});
 		var o = {};
 		var a = this.serializeArray();
 		for (i = 0; i < a.length; i += 1) {
-			o = parseNestedParam(o, a[i].name, a[i].value);
+			if (a[i].value !== '' || !options.filterEmpty) {
+				o = parseNestedParam(o, a[i].name, a[i].value);
+			}
 		}
 		return o;
 	};

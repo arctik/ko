@@ -210,7 +210,7 @@ Store = (entity) ->
 	get: db.get.bind db, entity
 	put: db.put.bind db, entity
 	drop: db.drop.bind db, entity
-	eval: db.eval.bind db
+	#eval: db.eval.bind db
 
 module.exports =
 	Store: Store

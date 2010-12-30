@@ -32,7 +32,7 @@ Facet = (model, expose) ->
 
 # expose collection accessors plus enlisted model methods, bound to the model itself
 PermissiveFacet = (model, expose) ->
-	Facet model, ['get', 'add', 'update', 'put', 'find', 'remove', 'eval'].concat(expose or [])
+	Facet model, ['get', 'add', 'update', 'put', 'find', 'remove'].concat(expose or [])
 
 # expose collection getters plus enlisted model methods, bound to the model itself
 RestrictiveFacet = (model, expose) ->
@@ -261,6 +261,10 @@ model.Course = Model 'Course', Store('Course'),
 			console.log 'FETCHED'
 			#delay 3000, model.Course.fetch.bind(model.Course)
 		deferred.promise
+	add: (props) ->
+		props ?= {}
+		props.date = Date.now()
+		@__proto__.add props
 	update: (query, changes) ->
 		changes ?= {}
 		changes.date = Date.now()

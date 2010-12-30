@@ -26,7 +26,7 @@ _.mixin({
 
 var __props__ = {
 	Bar: [
-		{name: 'user', title: 'Логин', pk: true},
+		{name: 'user', title: 'Логин'},
 		{name: 'pass', title: 'Пароль'},
 		{name: 'email', title: 'Мыло'}
 	],
@@ -41,8 +41,6 @@ var VIEW;
 
 var MODELS = window.MODELS = {
 	Course: Backbone.Model.extend({
-	}, {
-		schema: __props__['Course']
 	})
 };
 
@@ -87,9 +85,6 @@ var Entity = Backbone.Collection.extend({
 		_.each(ids, function(id){
 			this.get(id).destroy();
 		}, this);
-	},
-	initialize: function(){
-		this.instance = new Backbone.Model()
 	}
 });
 
@@ -98,13 +93,12 @@ var COLLECTIONS = window.COLLECTIONS = {
 		model: Backbone.Model.extend({
 			hz: 'her'
 		}),
-		url: 'Course'
+		url: 'Course',
+		schema: __props__['Course']
 	})
 };
 
 var model = window.model = new Backbone.Model({
-	entity: new Entity(),
-	instance: new Backbone.Model()
 });
 
 var HeaderApp = Backbone.View.extend({
@@ -229,15 +223,12 @@ var NavApp = Backbone.View.extend({
 
 var EntityView = Backbone.View.extend({
 	_lastClickedRow: 0,
-	_selected: [],
 	render: function(){
-		var m = model.get('entity');
-		console.log('VIEWRENDER', this, m.query+'');
-		var name = m.name;
-		var schema = MODELS[name] && MODELS[name].schema || [{name: 'id', title: 'id'}];
-		var items = m.toJSON();
-		var query = this.query = RQL.Query(m.query+'').normalize({clear: _.pluck(schema, 'name')});
-		var props = schema;
+		console.log('VIEWRENDER', this, $('#entity').html());
+		var name = this.model.name;
+		var items = this.model.toJSON();
+		var query = this.model.query;
+		var props = this.model.schema;
 		if (query.selectArr.length) {
 			var selectedProps = _.map(query.selectObj, function(show, name){if (show) return _.detect(props, function(x){return x.name === name});});
 			//if (!query.selectObj.id) selectedProps.unshift(_.detect(props, function(x){return x.name === 'id'}));
@@ -247,18 +238,9 @@ var EntityView = Backbone.View.extend({
 		$(this.el).html(_.partial([name+'-list', 'list'], {
 			name: name,
 			items: items,
-			//selected: _selected,
 			query: query,
 			props: props
 		}));
-		this.delegateEvents();
-
-		// render entity explorer to content element
-		var mi = new Backbone.Model;
-		mi.collection = m;
-		model.set({instance: mi});
-		//$('#inspector').replaceWith(this.inspector.render().el);
-
 
 		// N.B. workaround: textchange event can not be delegated...
 		// reload the View after a 1 sec timeout elapsed after the last textchange event on filters
@@ -290,43 +272,24 @@ var EntityView = Backbone.View.extend({
 		'click .action-open': 'open'
 		//'submit form': 'act'
 	},
-	getSelected: function(){
+	removeSelected: function(e){
 		// get ids from selected containers
 		var ids = []; $(this.el).find('.action-select-row.selected').each(function(i, row){ids.push($(row).attr('rel'))});
-		return ids;
-	},
-	removeSelected: function(e){
-		var m = model.get('entity');
-		var ids = this.getSelected();
 		//console.log('REMOVE', ids, this.model);
-		m.destroyMany(ids);
+		this.model.destroyMany(ids);
 		return false;
 	},
 	addNew: function(e){
-		var m = model.get('entity');
-		m.create();
+		this.model.create();
 		console.log('ADD!');
 		return false;
 	},
 	open: function(e){
 		var id = $(e.target).attr('rel');
-		this.inspect(id);
-		return false;
-	},
-	inspect: function(id){
-		console.log('INSP', id);
-		var m = model.get('entity');
-		var item = m.get(id);
-		if (!item) {
-			item = new Backbone.Model;
-			item.collection = m;
-			item.ids = id;
-			//if (id instanceof Array && id.length > 1) {
-				//item.
-			//}
-		}
-		console.log('OPEN?', item);
-		model.set({instance: item});
+		var item = this.model.get(id);
+		model.set({instance: item}, {silent: true});
+		model.get('instance').change();
+		//console.log('OPEN', item);
 		//model.set({id: id}, {silent: true});
 		return false;
 		//var url = $(e.target).attr('href');
@@ -335,9 +298,11 @@ var EntityView = Backbone.View.extend({
 				model.get('instance').set(item);
 			}
 		});
+		//console.log('OPEN', item);
+		return false;
 	},
 	reload: function(){
-		var query = this.query;
+		var query = this.model.query;
 		var filters = $(this.el).find(':input.filter');
 		filters.each(function(i, x){
 			var name = $(x).attr('name');
@@ -360,15 +325,7 @@ var EntityView = Backbone.View.extend({
 		// TODO: reflect all-selected status in master checkbox
 		var id = $(e.target).parents('.action-select-row:first').toggleClass('selected', fn).attr('rel');
 		//
-		var ids = this.getSelected();
-		//console.log('SELECTED', ids);
-		this.inspect(ids);
-		return;
-		if (ids.length === 1) {
-			id = ids[0];
-			//var row = $(e.target).parents('.action-select-list:first').find('.action-open[rel='+id+']');
-			this.inspect(id);
-		}
+		console.log('SELECTED', id);
 	},
 	// gmail-style selection, shift-click selects the sequence
 	selectSequence: function(e){
@@ -407,7 +364,7 @@ var EntityView = Backbone.View.extend({
 	// handle multi-column sort
 	sort: function(e){
 		var prop = $(e.target).attr('rel');
-		var query = this.query;
+		var query = this.model.query;
 		var sortOrder = query.sort;
 		var state = query.sortObj[prop];
 		var multi = sortOrder.length > 1;
@@ -433,14 +390,13 @@ var EntityView = Backbone.View.extend({
 	},
 	// handle pagination
 	setPageSize: function(e){
-		this.query.limit[0] = +($(e.target).val());
+		this.model.query.limit[0] = +($(e.target).val());
 		this.reload();
 		return false;
 	},
 	gotoPage11111111111111: function(e){
-		var m = model.get('entity');
-		var items = m.toJSON();
-		var query = this.query;
+		var items = this.model.toJSON();
+		var query = this.model.query;
 		//console.log('PAGE', query);
 		var limit = query.limit[0];
 		var start = Math.floor(query.limit[1] / limit);
@@ -461,9 +417,8 @@ var EntityView = Backbone.View.extend({
 		return false;
 	},
 	gotoPage: function(e){
-		var m = model.get('entity');
-		var items = m.toJSON();
-		var query = this.query;
+		var items = this.model.toJSON();
+		var query = this.model.query;
 		var lastSkip = query.limit[1];
 		var delta = query.limit[0]; if (delta === Infinity) delta = 100;
 		var el = $(e.target);
@@ -480,61 +435,43 @@ var EntityView = Backbone.View.extend({
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		// re-render upon model changes
-		var m = model.get('entity');
-		m.bind('change', this.render);
-		m.bind('add', this.render);
-		m.bind('remove', this.render);
-		m.bind('refresh', this.render);
-		m.bind('all', function(){
-			console.log('ENTITYREFRESH?', arguments);
-		});
-		console.log('VIEWINIT', this.el);
-		// create instance viewer/editor
-		this.inspector = new EditorView;
+		console.log('VIEWINIT', this, arguments);
+		this.rebind();
+	},
+	rebind: function(){
+		this.model.bind('change', this.render);
+		this.model.bind('add', this.render);
+		this.model.bind('remove', this.render);
+		this.model.bind('refresh', this.render);
 	}
 });
 
 var EditorView = Backbone.View.extend({
+	model: model.get('instance'),
 	render: function(){
-		var m = model.get('instance');
 		var name = 'Course';
-		console.log('INSPECT', m.toJSON());
+		console.log('INSPECT', this.model.toJSON());
 		$(this.el).html(_.partial([name+'-form', 'form'], {
-			data: m.toJSON()
-		})).appendTo($('#inspector'));
-		this.delegateEvents();
+			data: this.model.toJSON()
+		})).appendTo($('.list-item-inspector'));
 		return this;
 	},
 	events: {
-		'submit form': 'act'
+		'submit #inspector': 'act'
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		var m = model.get('instance');
-		model.bind('change:instance', this.render);
-		//m.bind('refresh', this.render);
-		m.bind('all', function(){
-			console.log('INSTANCEEVENT', arguments);
-		});
+		this.model.bind('change', this.render);
+		this.model.bind('refresh', this.render);
 	},
 	act: function(e){
-		var m = model.get('instance');
-		var props = $(e.target).serializeObject({filterEmpty: true});
-		console.log('TOSAVE?', m, props);
+		var data = $(e.target).serializeObject();
 		try {
-			// multi update --> kick off empty props
-			if (m.ids) {
-				//props = _.filter(props, function(x){return x;})
-				//console.log('TOSAVE!', m, props);
-				m.collection.updateMany(m.ids, props);
-			} else {
-				m.save(props);
-			}
+			this.model.save(data);
 		} catch (x) {
-			console.log('EXC', x, m, props);
+			console.log('EXC', x, this.model);
 		}
-		//console.log('SUBMIT', props, m);
+		//console.log('SUBMIT', data, this.model);
 		return false;
 	}
 });
@@ -548,101 +485,100 @@ var App = Backbone.View.extend({
 		// render content element
 		this.el.html(this.template(this.model.toJSON()));
 		// render entity explorer to content element
-		$('#entity').replaceWith(this.view.render().el);
+		var entity = this.model.get('entity');
+		if (entity) {
+			VIEW = new EntityView({model: entity});
+			$('#entity').replaceWith(VIEW.render().el);
+		}
 		return this;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
 		// re-render upon model change
-		//this.model.bind('change', this.render);
-		this.model.bind('change:user', this.render);
-		this.model.bind('change:entity', this.render);
-		// create entity viewer
-		this.view = new EntityView; //({el: this.el.find('#entity')[0]});
+		this.model.bind('change', this.render);
 	}
 });
 
-/*
-
-change:user -> render, put view
-change:entity -> put view
-route:entity -> entity.refresh -> ???
-
-*/
-
-var Controller = Backbone.Controller.extend({
-	routes: {
-		'contact': 'contactUs'
-	},
-	initialize: function(){
-		// entity viewer
-		this.route(/^([^/?]+)(?:\?(.*))?$/, 'entity', function(entity, query){
-			var m = model.get('entity');
-			//var m = new Entity();//COLLECTIONS[entity];
-			//console.log('ROUTE', arguments);
-			m.name = entity;
-			m.url = entity;
-			m.query = RQL.Query(query);
-			console.log('QUERY', entity, query, m);
-			m.fetch({
-				url: m.url + (query ? '?' + query : ''),
-				error: function(_m, xhr){
-					alert('FAILED: ' + xhr.responseText);
-				},
-				success: function(data){
-					//model.set({entity: m});
-					console.log('SUCC', m);
+	var Controller = Backbone.Controller.extend({
+		routes: {
+			'contact': 'contactUs'
+		},
+		initialize: function(){
+			// entity viewer
+			this.route(/^([^/?]+)(?:\?(.*))?$/, 'entity', function(entity, query){
+				var m = model.get('entity');
+				//console.log('ROUTE', arguments);
+				//var coll = COLLECTIONS[entity] && new COLLECTIONS[entity] || new Entity();
+				var ent;
+				if (ent = COLLECTIONS[entity]) {
+					ent = new ent;
+					ent.name = entity;
+				} else {
+					ent = new Entity();
+					ent.name = entity;
+					ent.url = entity;
+					ent.schema = __props__[ent.name] || [];
 				}
+				ent.query = RQL.Query(query).normalize({clear: _.pluck(ent.schema, 'name')});
+				console.log('QUERY', entity, query, ent);
+				ent.fetch({
+					url: entity + (query ? '?' + query : ''),
+					error: function(_m, xhr){
+						alert('FAILED: ' + xhr.responseText);
+					},
+					success: function(data){
+						console.log('SUCC', ent);
+						model.set({entity: ent});
+					}
+				});
 			});
-		});
-		/*
-		// instance viewer
-		this.route(/^([^/?]+)\/([^/?]+)$/, 'instance', function(entity, id){
-			var m = model.get('instance');
-			console.log('INST', m);
-			m.name = entity;
-			m.url = entity + '/' + id;
-			m.props = __props__[m.name];
-			m.fetch({url: entity + '/' + id});
-		});
-		*/
-	},
-	contactUs: function(){
-		console.log('CONTACTUS');
-	}
-});
-
-$(function(){
-
-	Backbone.emulateHTTP = true;
-	Backbone.emulateJSON = true;
-
-	//
-	new HeaderApp;
-	new NavApp;
-	new FooterApp;
-	new App;
-	window.model.set(session);
-
-	// let the history begin
-	var controller = new Controller();
-	Backbone.history.start();
-
-	// a.toggle toggles the next element visibility
-	$(document)
-	.delegate('a.toggle', 'click', function(){
-		$(this).next().toggle(0, function(){
-			// autofocus the first input
-			if ($(this).is(':visible')) $(this).find('input:enabled:first').focus();
-		});
-		return false;
-	})
-	// a.button-close hides parent form
-	.delegate('a.button-close, button[type=reset]', 'click', function(){
-		$(this).parents('form').hide();
-		return false;
+			/*
+			// instance viewer
+			this.route(/^([^/?]+)\/([^/?]+)$/, 'instance', function(entity, id){
+				var m = model.get('instance');
+				console.log('INST', m);
+				m.name = entity;
+				m.url = entity + '/' + id;
+				m.props = __props__[m.name];
+				m.fetch({url: entity + '/' + id});
+			});
+			*/
+		},
+		contactUs: function(){
+			console.log('CONTACTUS');
+		}
 	});
 
-});
+	$(function(){
 
+		Backbone.emulateHTTP = true;
+		Backbone.emulateJSON = true;
+
+		//
+		new HeaderApp;
+		new NavApp;
+		new FooterApp;
+		new App;
+		window.model.set(session);
+
+		// let the history begin
+		var controller = new Controller();
+		Backbone.history.start();
+
+		// a.toggle toggles the next element visibility
+		$(document)
+		.delegate('a.toggle', 'click', function(){
+			$(this).next().toggle(0, function(){
+				// autofocus the first input
+				if ($(this).is(':visible')) $(this).find('input:enabled:first').focus();
+			});
+			return false;
+		})
+		// a.button-close hides parent form
+		.delegate('a.button-close, button[type=reset]', 'click', function(){
+			$(this).parents('form').hide();
+			return false;
+		});
+
+	});
 });

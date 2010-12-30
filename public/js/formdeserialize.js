@@ -1,9 +1,14 @@
 ;(function($){
-	$.fn.serializeObject = function(){
+	$.fn.serializeObject = function(options){
+		options = $.extend({
+			filterEmpty: false
+		}, options || {});
 		var o = {};
 		var a = this.serializeArray();
 		for (i = 0; i < a.length; i += 1) {
-			o = parseNestedParam(o, a[i].name, a[i].value);
+			if (a[i].value !== '' || !options.filterEmpty) {
+				o = parseNestedParam(o, a[i].name, a[i].value);
+			}
 		}
 		return o;
 	};

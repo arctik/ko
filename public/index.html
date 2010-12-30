@@ -112,11 +112,11 @@
 	<script id="tmpl-navigation" type="text/x-jquery-tmpl">
 		<% if (user.id) { %>
 		<div class="menu grid_12 alpha">
-			<a href="#Bar">Bar</a>
-			<a href="#Course">Courses</a>
-			<a href="#Affiliate">Affiliates</a>
-			<a href="#Merchant">Merchants</a>
-			<a href="#Admin">Admins</a>
+			<a href="/#Bar">Bar</a>
+			<a href="/#Course">Courses</a>
+			<a href="/#Affiliate">Affiliates</a>
+			<a href="/#Merchant">Merchants</a>
+			<a href="/#Admin">Admins</a>
 		</div>
 		<form><input class="grid_4 omega" type="search" /></form>
 		<% } %>
@@ -222,7 +222,7 @@ Cursus est risus hendrerit et <br>
 	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
 	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
 	<div class="buttons">
-		<button type="submit">Отправить</button>
+		<button type="submit"><% if (data.id) { %>Отправить<% } else { %>Добавить<% } %></button>
 	</div>
 </form>
 </script>
