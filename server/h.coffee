@@ -88,6 +88,43 @@ U.mixin
 	query: (arr, query, params) ->
 		filterArray query, params or {}, arr
 
+#
+# Schema
+#
+
+J = require 'json-schema/lib/validate'
+
+coerce = (instance, schema) ->
+	t = schema.type
+	if t is 'string'
+		instance = instance ? ''+instance : '';
+	else if t in ['number', 'integer']
+		if not U.isNaN instance
+			instance = +instance;
+			instance = Math.floor instance if t is 'integer'
+	else if t is 'boolean'
+		# N.B. shouldn't 'false' coerce to false?
+		instance = not not instance
+	else if t is 'null'
+		instance = null
+	else if t is 'object'
+		# can't really think of any sensible coercion to an object
+	else if t is 'array'
+		instance = U.toArray instance
+		#instance = if instance instanceof Array then instance else if instance then [instance] else []
+	else if t is 'date'
+		date = new Date instance
+		if not U.isNaN date.getTime()
+			instance = date
+	instance
+
+# coercively validate instance
+global.validate = (instance, schema) -> J._validate instance, schema, coerce: coerce
+# coercively validate only properties that do exist in instance
+global.validatePart = (instance, schema) -> J._validate instance, schema, existingOnly: true, coerce: coerce
+# deletes properties not defined in the schema
+global.validateFilter = (instance, schema) -> J._validate instance, schema, filter: true
+
 ############
 
 global.timeout  = (time, next) -> setTimeout next, time

@@ -36,7 +36,8 @@
 
 <body class="container_16 clearfix">
 
-	<header id="header" class="container_16 clearfix" data-template="???"></header>
+	<div id="errors" class="container_16 clearfix"></div>
+	<header id="header" class="container_16 clearfix"></header>
 	<nav id="nav" class="container_16 clearfix"></nav>
 	<div id="content" class="container_16 clearfix"></div>
 	<footer id="footer" class="container_16 clearfix"></footer>
@@ -50,77 +51,75 @@
 		</script>
 	<![endif]-->
 
-	<!-- bundled jQuery templates -->
-	<script id="tmpl-notfound" type="text/x-jquery-tmpl">NO TEMPLATE</script>
+<!-- bundled jQuery templates -->
+<script id="tmpl-notfound" type="text/x-jquery-tmpl">NO TEMPLATE</script>
 
-	<script id="tmpl-header" type="text/x-jquery-tmpl">
-		<div class="grid_12 alpha">&nbsp;</div>
-		<div class="grid_4 omega">
-			<% if (user.id) { %>
-			<div><span><%= user.type %>&nbsp;<%= user.email || user.id %></span>
-				<form id="logout" class="modal" style="display: inline;">
-					<button type="submit">Logout</button>
-				</form>
-			</div>
-			<% } else { %>
-			<div>
-				<a href="#login" class="toggle">Login</a>
-				<form id="login" class="modal" style="display: none;">
-					<input type="text" size="10" name="user" placeholder="Username" />
-					<input type="password" size="10" name="pass" placeholder="Password" />
-					<label>Stay signed in<input type="checkbox" name="remember" /></label>
-					<div class="buttons">
-						<button type="submit">Отправить</button>
-						<button type="reset">Отмена</button>
-					</div>
-				</form>
-				<a href="#signup" class="toggle">Signup</a>
-				<form id="signup" class="modal" style="display: none;">
-					<input type="text" size="10" name="user" placeholder="Username" />
-					<input type="password" size="10" name="pass" placeholder="Password" />
-					<div class="buttons">
-						<button type="submit">Отправить</button>
-						<button type="reset">Отмена</button>
-					</div>
-				</form>
-			</div>
-			<% } %>
-		</div>
-	</script>
+<script id="tmpl-errors" type="text/x-jquery-tmpl">
+	<% _.each(errors, function(error){ %>
+	<div class="error">
+		<%= error.property %>:<%= error.message %>
+	</div>
+	<% }); %>
+</script>
 
-	<script id="tmpl-login" type="text/x-jquery-tmpl">
-		<form class="modal" action="/login">
-			<input type="text" size="10" name="user" placeholder="Username" required="true" />
-			<input type="password" size="10" name="pass" placeholder="Password" required="true" />
-			<label>Stay signed in<input type="checkbox" name="remember" /></label>
-			<div class="buttons">
-				<button type="submit">Отправить</button>
-				<button onclick="history.back(); return false;">Отмена</button>
-			</div>
-		</form>
-	</script>
-
-	<script id="tmpl-footer" type="text/x-jquery-tmpl">
-		<div class="copyright grid_8 alpha">
-			&copy; 2010<% if (year !== '2010') { %>-<%=year%><% } %> Your company here
-		</div>
-		<div class="grid_8 omega">
-			<a href="#contact">Contact us</a>
-		</div>
-	</script>
-
-	<script id="tmpl-navigation" type="text/x-jquery-tmpl">
+<script id="tmpl-header" type="text/x-jquery-tmpl">
+	<div class="grid_12 alpha">&nbsp;</div>
+	<div class="grid_4 omega">
 		<% if (user.id) { %>
-		<div class="menu grid_12 alpha">
-			<a href="/#Bar">Bar</a>
-			<a href="/#Course">Courses</a>
-			<a href="/#Affiliate">Affiliates</a>
-			<a href="/#Merchant">Merchants</a>
-			<a href="/#Admin">Admins</a>
+		<div><span><%= user.type %>&nbsp;<%= user.name || user.email || user.id %></span>
+			<form id="logout" class="modal" style="display: inline;">
+				<button type="submit">Logout</button>
+			</form>
 		</div>
-		<form><input class="grid_4 omega" type="search" /></form>
+		<% } else { %>
+		<div>
+			<a href="#login" class="toggle">Login</a>
+			<form id="login" class="modal" style="display: none;">
+				<input type="text" size="10" name="user" placeholder="Username" />
+				<input type="password" size="10" name="pass" placeholder="Password" />
+				<label>Stay signed in<input type="checkbox" name="remember" /></label>
+				<div class="buttons">
+					<button type="submit">Отправить</button>
+					<button type="reset">Отмена</button>
+				</div>
+			</form>
+			<a href="#signup" class="toggle">Signup</a>
+			<form id="signup" class="modal" style="display: none;">
+				<input type="text" size="10" name="user" placeholder="Username" />
+				<input type="password" size="10" name="pass" placeholder="Password" />
+				<div class="buttons">
+					<button type="submit">Отправить</button>
+					<button type="reset">Отмена</button>
+				</div>
+			</form>
+		</div>
 		<% } %>
-	</script>
+	</div>
+</script>
+
+<script id="tmpl-footer" type="text/x-jquery-tmpl">
+	<div class="copyright grid_8 alpha">
+		&copy; 2010<% if (year !== '2010') { %>-<%=year%><% } %> Your company here
+	</div>
+	<div class="grid_8 omega">
+		<a href="#contact">Contact us</a>
+	</div>
+</script>
+
+<script id="tmpl-navigation" type="text/x-jquery-tmpl">
+	<% if (user.id) { %>
+	<div class="menu grid_12 alpha">
+		<a href="/#">Home</a>
+		<a href="/#admin/Bar">Bar</a>
+		<a href="/#admin/Course">Courses</a>
+		<a href="/#admin/Language">Language</a>
+		<a href="/#admin/Affiliate">Affiliates</a>
+		<a href="/#admin/Merchant">Merchants</a>
+		<a href="/#admin/Admin">Admins</a>
+	</div>
+	<form><input class="grid_4 omega" type="search" /></form>
+	<% } %>
+</script>
 
 <script id="tmpl-content" type="text/x-jquery-tmpl">
 	<% if (user.id) { %>
@@ -145,93 +144,154 @@ Cursus est risus hendrerit et <br>
 	<% } %>
 </script>
 
-	<script id="tmpl-list" type="text/x-jquery-tmpl">
-		<div class="list-actions grid_3 alpha"><%=_.partial([name+'-actions', 'actions'],{data:{}})||'&nbsp;'%></div>
-		<div class="list grid_10">
-			<select class="actions">
-				<option></option>
-				<option value="all">All</option>
-				<option value="none">None</option>
-				<option value="toggle">Toggle</option>
-			</select>
-			<table id="list-<%=name%>">
-				<thead>
-					<tr>
-						<th></th>
-						<% _.each(props, function(prop){ %>
-						<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
-						<% }); %>
-					</tr>
-					<tr>
-						<th><input type="checkbox" class="action-select-all" /></th>
-						<% _.each(props, function(prop){ %>
-						<th>
-							<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
-						</th>
-						<% }); %>
-					</tr>
-				</thead>
-				<tbody class="action-select-list"><% _.each(items, function(item){ %>
-					<tr class="action-select-row" rel="<%=item.id%>">
-						<td class="actions"><%=Date.now()%><input type="checkbox" class="action-select" /></td>
-						<% _.each(props, function(prop){ var val = item[prop.name]; if (prop.format === 'date') val = JSON.stringify(new Date(val)); %>
-						<td>
-						<% if (prop.pk) { %>
-							<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=val%></a>
-						<% } else { %>
-							<%=val%>
-						<% } %>
-						</td>
-						<% }); %>
-					</tr>
-					<tr class="action-edit-row" style="display: none;">
-						<td></td>
-						<td colspan="<%=props.length%>"><%=JSON.stringify(item)%></td>
-					</tr>
-				<% }); %></tbody>
-				<tfoot></tfoot>
-			</table>
-			<div>
-				Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
-			</div>
-<div class="pager">
-<a href="javascript:void(0)" class="page-prev">Prev</a>
-<a href="javascript:void(0)" class="page-next">Next</a>
-<select class="action-limit">
-	<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
-	<option value="10">10</option>
-	<option value="25">25</option>
-	<option value="50">50</option>
-</select>
-</div>
+<script id="tmpl-list" type="text/x-jquery-tmpl">
+	<div class="list-actions grid_3 alpha"><%=_.partial([name+'-actions', 'actions'],{data:{}})||'&nbsp;'%></div>
+	<div class="list grid_10">
+		<select class="actions">
+			<option></option>
+			<option value="all">All</option>
+			<option value="none">None</option>
+			<option value="toggle">Toggle</option>
+		</select>
+		<table id="list-<%=name%>">
+			<thead>
+				<tr>
+					<th></th>
+					<% _.each(props, function(prop){ %>
+					<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
+					<% }); %>
+				</tr>
+				<tr>
+					<th><input type="checkbox" class="action-select-all" /></th>
+					<% _.each(props, function(prop){ %>
+					<th>
+						<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
+					</th>
+					<% }); %>
+				</tr>
+			</thead>
+			<tbody class="action-select-list"><% _.each(items, function(item){ %>
+				<tr class="action-select-row" rel="<%=item.id%>">
+					<td class="actions"><!--%=Date.now()%--><input type="checkbox" class="action-select" /></td>
+					<% _.each(props, function(prop){ var val = item[prop.name]; if (prop.format === 'date') val = JSON.stringify(new Date(val)); %>
+					<td>
+					<% if (prop.pk) { %>
+						<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=val%></a>
+					<% } else { %>
+						<%=val%>
+					<% } %>
+					</td>
+					<% }); %>
+				</tr>
+				<tr class="action-edit-row" style="display: none;">
+					<td></td>
+					<td colspan="<%=props.length%>"><%=JSON.stringify(item)%></td>
+				</tr>
+			<% }); %></tbody>
+			<tfoot></tfoot>
+		</table>
+		<div>
+			Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
 		</div>
-		<div id="inspector" class="list-item-inspector grid_3 omega"></div>
-	</script>
+		<div class="pager">
+			<a href="javascript:void(0)" class="page-prev">Prev</a>
+			<a href="javascript:void(0)" class="page-next">Next</a>
+			<select class="action-limit">
+				<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
+				<option value="10">10</option>
+				<option value="25">25</option>
+				<option value="50">50</option>
+			</select>
+		</div>
+	</div>
+	<div id="inspector" class="list-item-inspector grid_3 omega"></div>
+</script>
+
+<script id="tmpl-form-buttons" type="text/x-jquery-tmpl">
+	<% if (data.id) { %>
+	<button type="submit">Сохранить</button>
+	<button class="action-remove">Удалить</button>
+	<% } else if (ids.length > 1) { %>
+	<button type="submit">Изменить</button>
+	<button class="action-remove">Удалить</button>
+	<% } else { %>
+	<button type="submit">Добавить</button>
+	<% } %>
+</script>
 
 <script id="tmpl-Course-actions" type="text/x-jquery-tmpl">
 <ul class="">
-	<li><a href="#Course/fetch">Refresh</a></li>
+	<li><a href="#Course/fetch">Взять с хурренси</a></li>
 </ul>
 </script>
 
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
-<form>
-	<div class="form-field"><label>ID<input type="text" name="cur" value="<%=escape(data.id||'')%>" readonly="readonly" /></label></div>
+<form style="position: fixed;">
 	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=escape(data.cur||'')%>" /></label></div>
 	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=escape(data.value||'')%>" /></label></div>
-	<div class="buttons">
-		<% console.log('INSPEKTIEREN:', model); %>
-		<!--button type="submit"><% if (data.id) { %>Сохранить<% } else if (model.ids && model.ids.length) { %>Изменить<% } else { %>Добавить<% } %></button-->
-		<% if (data.id) { %>
-		<button type="submit">Сохранить</button>
-		<button class="action-remove">Удалить</button>
-		<% } else if (model.ids && model.ids.length) { %>
-		<button type="submit">Изменить</button>
-		<button class="action-remove">Удалить</button>
-		<% } else { %>
-		<button type="submit">Добавить</button>
-		<% } %>
-	</div>
+	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids})||'&nbsp;'%></div>
+</form>
+</script>
+
+<script id="tmpl-Language-form" type="text/x-jquery-tmpl">
+<form>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
+	<% } %>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name||''%>" /></label></div>
+	<div class="form-field"><label>Нацназвание<input type="text" name="localName" value="<%=data.localName%>" /></label></div>
+	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids})||'&nbsp;'%></div>
+</form>
+</script>
+
+<script id="tmpl-Affiliate-actions" type="text/x-jquery-tmpl">
+<ul class="">
+	<li><a href="#Affiliate/hz">ХЗ что, но что-то могло бы быть</a></li>
+</ul>
+</script>
+
+<script id="tmpl-Affiliate-form" type="text/x-jquery-tmpl">
+<form>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
+	<% } %>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=escape(data.name||'')%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=escape(data.email||'')%>" /></label></div>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
+	<% } %>
+	<div class="form-field"><label>В строю?<select name="active"><option value="">---</option><option value="true"<% if (data.active) { %> selected="selected"<% } %>>Да</option><option value="false"<% if (data.active === false) { %> selected="selected"<% } %>>Нет</option></select></label></div>
+	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids})||'&nbsp;'%></div>
+</form>
+</script>
+
+<script id="tmpl-Merchant-form" type="text/x-jquery-tmpl">
+<form>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
+	<% } %>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=escape(data.name||'')%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=escape(data.email||'')%>" /></label></div>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
+	<% } %>
+	<div class="form-field"><label>В строю?<select name="active"><option value="">---</option><option value="true"<% if (data.active) { %> selected="selected"<% } %>>Да</option><option value="false"<% if (data.active === false) { %> selected="selected"<% } %>>Нет</option></select></label></div>
+	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids})||'&nbsp;'%></div>
+</form>
+</script>
+
+<script id="tmpl-Admin-form" type="text/x-jquery-tmpl">
+<form>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
+	<% } %>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name||''%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=escape(data.email||'')%>" /></label></div>
+	<% if (!ids.length) { %>
+	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
+	<% } %>
+	<div class="form-field"><label>В строю?<select name="active"><option value="">---</option><option value="true"<% if (data.active) { %> selected="selected"<% } %>>Да</option><option value="false"<% if (data.active === false) { %> selected="selected"<% } %>>Нет</option></select></label></div>
+	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids})||'&nbsp;'%></div>
 </form>
 </script>
 

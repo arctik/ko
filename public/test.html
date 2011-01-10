@@ -1,0 +1,83 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>Body tag switching</title>
+    <script type="text/javascript" src="js/requireplugins-jquery-1.4.4.js"></script>
+    <script type="text/javascript">
+
+    $(document).ready(function(){
+        $("header a").bind("click", function(event){
+            //Get the info from our link's rel tag
+            var pageToShow = $(event.target).attr("rel");
+            //Attatch new ID to the body
+            $("body").attr("id", pageToShow);
+        })
+    })
+
+    </script>
+    <style type="text/css">
+
+    body {
+        margin:0;
+        padding:0;
+    }
+
+    header {
+        height:50px;
+        line-height:50px;
+        background:#888;
+        color:white;
+        text-align:center;
+    }
+
+    .page {
+        position:absolute;
+        top:50px;
+        bottom:0;
+        width:100%;
+        background:green;
+    }
+
+    /* Switching State 1 */
+    body#welcomePage #welcome{
+        left:0;
+        background:blue;
+        width:50%;
+    }
+
+    body#welcomePage #detail{
+        left:50%;
+        background:yellow;
+        width:50%;
+    }
+
+    /* Switching State 2 */
+    body#detailPage #welcome{
+        left:50%;
+        background:blue;
+        width:50%;
+    }
+
+    body#detailPage #detail{
+        left:0;
+        background:yellow;
+        width:50%;
+    }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="#" rel="welcomePage">Show Welcome</a>
+        <a href="#" rel="detailPage">Show Detail</a>
+    </header>
+    <div id="content">
+        <div id="welcome" class="page">
+            This is some content - LAYOUT 1
+        </div>
+        <div id="detail" class="page">
+            This is some content - LAYOUT 2
+        </div>
+    </div>
+</body>
+</html>

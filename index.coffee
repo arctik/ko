@@ -17,7 +17,8 @@ Model = (entity, store, overrides) ->
 	Compose.create store, overrides
 
 # expose enlisted model methods, bound to the model itself
-Facet = (model, expose) ->
+Facet = (model, options, expose) ->
+	options ?= {}
 	facet = {}
 	expose and expose.forEach (def) ->
 		if def instanceof Array
@@ -26,17 +27,34 @@ Facet = (model, expose) ->
 		else
 			name = def
 			method = model[name]
-		facet[name] = method.bind model if method
+		#
+		fn = method
+		# .add() honors schema, if any
+		if name is 'add' and options.schema
+			fn = (document) ->
+				validation = validate document or {}, options.schema
+				if not validation.valid
+					return SyntaxError JSON.stringify validation.errors
+				method.call this, document
+		# .update() honors schema, if any
+		else if name is 'update' and options.schema
+			fn = (query, changes) ->
+				validation = validatePart changes or {}, options.schema
+				if not validation.valid
+					return SyntaxError JSON.stringify validation.errors
+				method.call this, query, changes
+		#
+		facet[name] = fn.bind model if fn
 		#facet[name] = Compose.from(model, name).bind model
-	Object.freeze Compose.create {}, facet
+	Object.freeze Compose.create options, facet
 
 # expose collection accessors plus enlisted model methods, bound to the model itself
-PermissiveFacet = (model, expose) ->
-	Facet model, ['get', 'add', 'update', 'put', 'find', 'remove'].concat(expose or [])
+PermissiveFacet = (model, options, expose...) ->
+	Facet model, options, ['get', 'add', 'update', 'find', 'remove'].concat(expose or [])
 
 # expose collection getters plus enlisted model methods, bound to the model itself
-RestrictiveFacet = (model, expose) ->
-	Facet model, ['get', 'find'].concat(expose or [])
+RestrictiveFacet = (model, options, expose...) ->
+	Facet model, options, ['get', 'find'].concat(expose or [])
 
 model = {}
 facets = {}
@@ -90,15 +108,16 @@ model.User = Model 'User', Store('User'),
 				console.log 'PASSWORD SET TO', data.password
 				password = encryptPassword data.password, salt
 				#console.log 'HERE', salt, password
-				# TODO: activation!
 				@__proto__.add
 					id: data.id
 					password: password
 					salt: salt
+					name: data.name
 					email: data.email
 					regDate: Date.now()
 					type: data.type
-					active: true
+					# TODO: activation!
+					active: data.active
 			(user) ->
 				#console.log 'USER', user
 				user
@@ -166,7 +185,7 @@ model.Affiliate = Compose.create model.User, {
 		@__proto__.find Query(query).eq('type', 'affiliate').ne('_deleted', true).select('-password', '-salt')
 	update: (query, changes) ->
 		# veto some changes
-		#changes.type = undefined
+		changes.type = undefined
 		@__proto__.update Query(query).eq('type', 'affiliate'), changes
 	remove: (query) ->
 		q = Query(query)
@@ -183,7 +202,7 @@ model.Merchant = Compose.create model.User, {
 		@__proto__.find Query(query).eq('type', 'merchant').ne('_deleted', true).select('-password', '-salt')
 	update: (query, changes) ->
 		# veto some changes
-		#changes.type = undefined
+		changes.type = undefined
 		@__proto__.update Query(query).eq('type', 'merchant'), changes
 	remove: (query) ->
 		q = Query(query)
@@ -238,7 +257,7 @@ model.Session = Model 'Session', Store('Session'),
 				#context = facets[level] or {}
 				level = [level] unless level instanceof Array
 				context = Compose.create.apply null, [{}].concat(level.map (x) -> facets[x])
-				console.log 'EFFECTIVE FACET', level, context
+				#console.log 'EFFECTIVE FACET', level, context
 				Object.freeze Compose.call session, context: context
 				#session
 		]
@@ -280,6 +299,12 @@ model.Course = Model 'Course', Store('Course'),
 			found = U.query latest, query
 			found = found[0] or null if Query(query).normalize().pk
 			found
+
+model.Language = Model 'Language', Store('Language', {
+	properties:
+		name: String
+		localName: String
+})
 
 ######################################
 ################### Tests
@@ -333,28 +358,61 @@ FacetForUser = Compose.create FacetForGuest, {
 	Course: RestrictiveFacet model.Course
 }
 
+# root -- hardcoded DB owner
 FacetForRoot = Compose.create FacetForUser, {
-	Bar: PermissiveFacet model.Bar, ['foos2']
-	Course: PermissiveFacet model.Course, ['fetch']
-	Affiliate: PermissiveFacet model.Affiliate
-	Merchant: PermissiveFacet model.Merchant
-	Admin: PermissiveFacet model.Admin
+	Bar: PermissiveFacet model.Bar, null, 'foos2'
+	Course: PermissiveFacet model.Course,
+		schema:
+			properties:
+				cur: String
+				value: Number
+				date: Date
+	, 'fetch'
+	Affiliate: PermissiveFacet model.Affiliate,
+		schema:
+			properties:
+				id: String
+				name: String
+				email: String
+	Merchant: PermissiveFacet model.Merchant,
+		schema:
+			properties:
+				id: String
+				name: String
+				email: String
+	Admin: PermissiveFacet model.Admin,
+		schema:
+			properties:
+				id: String
+				name: String
+				email: String
+	Language: PermissiveFacet model.Language,
+		schema:
+			properties:
+				id:
+					type: 'string'
+					pattern: '[a-z]+'
+				name: String
+				localName: String
 }
 
 FacetForAffiliate = Compose.create FacetForUser, {
-	Affiliate: RestrictiveFacet model.Affiliate
+	#Affiliate: RestrictiveFacet model.Affiliate
+	Language: PermissiveFacet model.Language
 }
 
 FacetForMerchant = Compose.create FacetForUser, {
-	Merchant: RestrictiveFacet model.Merchant
+	#Merchant: RestrictiveFacet model.Merchant
 }
 
+# admin -- powerful user
 FacetForAdmin = Compose.create FacetForUser, {
-	Bar: PermissiveFacet model.Bar, ['foos2']
-	Course: PermissiveFacet model.Course, ['fetch']
-	Affiliate: PermissiveFacet model.Affiliate
-	Merchant: PermissiveFacet model.Merchant
-	Admin: PermissiveFacet model.Admin
+	Bar: PermissiveFacet model.Bar, null, 'foos2'
+	Course: FacetForRoot.Course
+	Affiliate: FacetForRoot.Affiliate
+	Merchant: FacetForRoot.Merchant
+	Admin: FacetForRoot.Admin
+	Language: FacetForRoot.Language
 }
 
 facets.public = FacetForGuest

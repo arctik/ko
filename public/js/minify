@@ -3,8 +3,8 @@
 cat \
 	../../lib/node/json2.js \
 	../../lib/node/underscore.js \
-	../../lib/node/backbone.js \
 	../../lib/node/jquery.tmpl.js \
+	../../lib/node/backbone.js \
 	jquery.textchange.min.js \
 	formdeserialize.js \
 	\

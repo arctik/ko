@@ -8,6 +8,7 @@
 deps='
 cloudhead/eyes.js/lib/eyes.js:eyes.js
 kriszyp/promised-io/lib:promised-io
+dvv/json-schema:json-schema
 kriszyp/compose/lib/compose.js:compose.js
 documentcloud/underscore/underscore.js:underscore.js
 douglascrockford/JSON-js/json2.js:json2.js
@@ -29,6 +30,7 @@ bentomas/node-mime:mime
 weaver/node-mail/lib/mail:mail
 miksago/node-websocket-server/lib:ws-server
 learnboost/socket.io-node:io
+Marak/Faker.js:faker
 '
 
 #deps=dvv/rql/lib:rql

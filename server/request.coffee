@@ -83,8 +83,8 @@ http.IncomingMessage::parseBody = () ->
 		deferred.reject SyntaxError(err.message or err)
 	form.on 'end', () ->
 		# Backbone.emulateJSON compat:
-		# if 'application/x-www-form-urlencoded' --> reparse 'model' key to be the final params
-		if self.headers['content-type'] is 'application/x-www-form-urlencoded'
+		# if 'application/x-www-form-urlencoded[; foobar]' --> reparse 'model' key to be the final params
+		if self.headers['content-type'].split(';')[0] is 'application/x-www-form-urlencoded'
 			delete self.params._method
 			#console.log 'BACKBONE?', self.params
 			self.params = JSON.parse(self.params.model || '{}')
