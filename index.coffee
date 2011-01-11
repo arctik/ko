@@ -346,10 +346,9 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 		#s = _.keys session.context
 		s = {}
 		for k, v of session.context
-			s[k] = typeof v
+			s[k] = v.schema
 		#s = session.context
-		# JSONP answer for RequireJS
-		'define('+JSON.stringify(user: session.user, model: s)+');'
+		user: session.user, schema: s
 	login: model.User.login.bind model.User
 }
 
@@ -364,36 +363,54 @@ FacetForRoot = Compose.create FacetForUser, {
 	Course: PermissiveFacet model.Course,
 		schema:
 			properties:
-				cur: String
-				value: Number
-				date: Date
+				cur:
+					type: 'string'
+					pattern: '[A-Z]{3}'
+				value:
+					type: 'number'
+				email:
+					date: 'date'
 	, 'fetch'
 	Affiliate: PermissiveFacet model.Affiliate,
 		schema:
 			properties:
-				id: String
-				name: String
-				email: String
+				id:
+					type: 'string'
+					pattern: '[a-zA-Z0-9_]+'
+				name:
+					type: 'string'
+				email:
+					type: 'string'
 	Merchant: PermissiveFacet model.Merchant,
 		schema:
 			properties:
-				id: String
-				name: String
-				email: String
+				id:
+					type: 'string'
+					pattern: '[a-zA-Z0-9_]+'
+				name:
+					type: 'string'
+				email:
+					type: 'string'
 	Admin: PermissiveFacet model.Admin,
 		schema:
 			properties:
-				id: String
-				name: String
-				email: String
+				id:
+					type: 'string'
+					pattern: '[a-zA-Z0-9_]+'
+				name:
+					type: 'string'
+				email:
+					type: 'string'
 	Language: PermissiveFacet model.Language,
 		schema:
 			properties:
 				id:
 					type: 'string'
-					pattern: '[a-z]+'
-				name: String
-				localName: String
+					pattern: '[a-zA-Z0-9_]+'
+				name:
+					type: 'string'
+				localName:
+					type: 'string'
 }
 
 FacetForAffiliate = Compose.create FacetForUser, {

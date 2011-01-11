@@ -62,38 +62,43 @@
 	<% }); %>
 </script>
 
+<script id="tmpl-simple-buttons" type="text/x-jquery-tmpl">
+	<button type="submit"><%=_.T('formSubmit')%></button>
+	<button type="reset"><%=_.T('formCancel')%></button>
+</script>
+
 <script id="tmpl-header" type="text/x-jquery-tmpl">
 	<div class="grid_12 alpha">&nbsp;</div>
 	<div class="grid_4 omega">
 		<% if (user.id) { %>
-		<div><span><%= user.type %>&nbsp;<%= user.name || user.email || user.id %></span>
-			<form id="logout" class="modal" style="display: inline;">
-				<button type="submit">Logout</button>
-			</form>
+		<a href="#" class="toggle"><%= user.type %>&nbsp;<%= user.name || user.email || user.id %>&nbsp;&nabla;</a>
+		<div style="display: none;">
+			<p><a href="#account"><%=_.T('accountSettings')%></a>
+			<p><a href="#logout"><%=_.T('loginLogout')%></a>
 		</div>
 		<% } else { %>
 		<div>
-			<a href="#login" class="toggle">Login</a>
+			<a href="#" class="toggle"><%=_.T('loginLogin')%></a>
 			<form id="login" class="modal" style="display: none;">
-				<input type="text" size="10" name="user" placeholder="Username" />
-				<input type="password" size="10" name="pass" placeholder="Password" />
-				<label>Stay signed in<input type="checkbox" name="remember" /></label>
-				<div class="buttons">
-					<button type="submit">Отправить</button>
-					<button type="reset">Отмена</button>
-				</div>
+				<input type="text" size="10" name="user" placeholder="<%=_.T('loginUsername')%>" />
+				<input type="password" size="10" name="pass" placeholder="<%=_.T('loginPassword')%>" />
+				<label><%=_.T('loginStaySigned')%><input type="checkbox" name="remember" /></label>
+				<div class="buttons"><%=_.partial(['simple-buttons'],{})%></div>
 			</form>
-			<a href="#signup" class="toggle">Signup</a>
+			<!--a href="#signup" class="toggle"><%=_.T('loginSignup')%></a>
 			<form id="signup" class="modal" style="display: none;">
-				<input type="text" size="10" name="user" placeholder="Username" />
-				<input type="password" size="10" name="pass" placeholder="Password" />
-				<div class="buttons">
-					<button type="submit">Отправить</button>
-					<button type="reset">Отмена</button>
-				</div>
-			</form>
+				<input type="text" size="10" name="user" placeholder="<%=_.T('loginUsername')%>" />
+				<input type="password" size="10" name="pass" placeholder="<%=_.T('loginPassword')%>" />
+				<div class="buttons"><%=_.partial(['simple-buttons'],{})%></div>
+			</form-->
 		</div>
 		<% } %>
+	</div>
+</script>
+
+<script id="tmpl-account" type="text/x-jquery-tmpl">
+	<div class="grid_8 omega">
+		AAA
 	</div>
 </script>
 
@@ -149,53 +154,47 @@ Cursus est risus hendrerit et <br>
 	<div class="list grid_10">
 		<select class="actions">
 			<option></option>
-			<option value="all">All</option>
-			<option value="none">None</option>
-			<option value="toggle">Toggle</option>
+			<option value="all"><%=_.T('all')%></option>
+			<option value="none"><%=_.T('none')%></option>
+			<option value="toggle"><%=_.T('toggle')%></option>
 		</select>
 		<table id="list-<%=name%>">
 			<thead>
 				<tr>
 					<th></th>
-					<% _.each(props, function(prop){ %>
-					<th class="action-sort" rel="<%=prop.name%>"<% if (query.sortObj[prop.name]) { %>data-sort="<%=query.sortObj[prop.name]%>"<% } %>><%=(prop.title || prop.name)%><% if (query.sortObj[prop.name]) { %>&nbsp;(<%=query.sortObj[prop.name]%>)<% } %></th>
+					<% _.each(props, function(prop, name){ %>
+					<th class="action-sort" rel="<%=name%>"<% if (query.sortObj[name]) { %>data-sort="<%=query.sortObj[name]%>"<% } %>><%=(_.T(name) || name)%><% if (query.sortObj[name]) { %>&nbsp;(<%=query.sortObj[name]%>)<% } %></th>
 					<% }); %>
 				</tr>
 				<tr>
 					<th><input type="checkbox" class="action-select-all" /></th>
-					<% _.each(props, function(prop){ %>
+					<% _.each(props, function(prop, name){ %>
 					<th>
-						<input type="search" name="<%=prop.name%>" class="filter"<% if (query.last[prop.name]) { %> value="<%=query.last[prop.name].args[1]%>"<% } %> />
+						<input type="search" name="<%=name%>" class="filter"<% if (query.last[name]) { %> value="<%=query.last[name].args[1]%>"<% } %> />
 					</th>
 					<% }); %>
 				</tr>
 			</thead>
 			<tbody class="action-select-list"><% _.each(items, function(item){ %>
 				<tr class="action-select-row" rel="<%=item.id%>">
-					<td class="actions"><!--%=Date.now()%--><input type="checkbox" class="action-select" /></td>
-					<% _.each(props, function(prop){ var val = item[prop.name]; if (prop.format === 'date') val = JSON.stringify(new Date(val)); %>
+					<td class="actions"><input type="checkbox" class="action-select" /></td>
+					<% _.each(props, function(prop, name){ var val = item[name]; if (prop.format === 'date') val = JSON.stringify(new Date(val)); %>
 					<td>
-					<% if (prop.pk) { %>
+					<% if (name === 'id') { %>
 						<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=val%></a>
 					<% } else { %>
-						<%=val%>
+						<%=_.escapeHTML(val)%>
 					<% } %>
 					</td>
 					<% }); %>
 				</tr>
-				<tr class="action-edit-row" style="display: none;">
-					<td></td>
-					<td colspan="<%=props.length%>"><%=JSON.stringify(item)%></td>
-				</tr>
 			<% }); %></tbody>
 			<tfoot></tfoot>
 		</table>
-		<div>
-			Displaying <%=+query.limit[1]+1%> to <%=+query.limit[1]+items.length%> items
-		</div>
+		<p><%=_.T('displayingItems', +query.limit[1]+1, +query.limit[1]+items.length)%></p>
 		<div class="pager">
-			<a href="javascript:void(0)" class="page-prev">Prev</a>
-			<a href="javascript:void(0)" class="page-next">Next</a>
+			<a href="javascript:void(0)" class="page-prev"><%=_.T('prev')%></a>
+			<a href="javascript:void(0)" class="page-next"><%=_.T('next')%></a>
 			<select class="action-limit">
 				<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
 				<option value="10">10</option>
@@ -209,13 +208,13 @@ Cursus est risus hendrerit et <br>
 
 <script id="tmpl-form-buttons" type="text/x-jquery-tmpl">
 	<% if (data.id) { %>
-	<button type="submit">Сохранить</button>
-	<button class="action-remove">Удалить</button>
+	<button type="submit"><%=_.T('formSave')%></button>
+	<button class="action-remove"><%=_.T('formRemove')%></button>
 	<% } else if (ids.length > 1) { %>
-	<button type="submit">Изменить</button>
-	<button class="action-remove">Удалить</button>
+	<button type="submit"><%=_.T('formUpdate')%></button>
+	<button class="action-remove"><%=_.T('formRemove')%></button>
 	<% } else { %>
-	<button type="submit">Добавить</button>
+	<button type="submit"><%=_.T('formAdd')%></button>
 	<% } %>
 </script>
 

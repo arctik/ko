@@ -1,12 +1,18 @@
 var model;
-require([
+
+var currentLocale = 'ru'; // FIXME: force locale here. cookie?
+require({
+	locale: currentLocale
+}, [
 	'js/bundle.js',
 	'rql',
-	'/home?callback=define'
-], function(x1, RQL, session){
+	'i18n!nls/forms', // i18n 
+], function(x1, RQL, i18nForms){
 	window.RQL = RQL;
+$.getJSON('/home', function(session){
 	console.log('SESSION', session);
 
+// improve _
 _.mixin({
 	partial: function(ids, data){
 		if (!_.isArray(ids)) {
@@ -21,17 +27,32 @@ _.mixin({
 				//console.log('PART!', text);
 			}
 		});
+		//if (data) {
+		//	data = _.extend(data, {i18n: i18nForms});
+		//}
+		//console.log('DATA', data);
 		return text ? _.template(text, data) : '';
+	},
+	// i18n-aware strings
+	T: function(id){
+		var text = i18nForms[id] || id;
+		if (arguments.length > 1) {
+			var args = Array.prototype.slice.call(arguments);
+			args[0] = text;
+			text = _.sprintf.apply(null, args);
+		}
+		return text;
 	}
 });
 
-$(function(){
+// DOM is loaded
+require.ready(function(){
 
 var MODELS = window.MODELS = {
 	Course: Backbone.Model.extend({
 	}, {
 		schema: [
-			{name: 'cur', title: 'Валюта', pk: true},
+			{name: 'cur', title: 'Валюта'},
 			{name: 'value', title: 'Курс'},
 			{name: 'date', title: 'На дату', format: 'date'}
 		]
@@ -39,7 +60,7 @@ var MODELS = window.MODELS = {
 	Language: Backbone.Model.extend({
 	}, {
 		schema: [
-			{name: 'id', title: 'ID', pk: true},
+			{name: 'id', title: 'ID'},
 			{name: 'name', title: 'Имя'},
 			{name: 'localName', title: 'Нацназвание'}
 		]
@@ -47,7 +68,7 @@ var MODELS = window.MODELS = {
 	Affiliate: Backbone.Model.extend({
 	}, {
 		schema: [
-			{name: 'id', title: 'ID', pk: true},
+			{name: 'id', title: 'ID'},
 			{name: 'name', title: 'Имя'},
 			{name: 'email', title: 'Мыло'},
 			{name: 'regDate', title: 'С какого', format: 'date'},
@@ -57,7 +78,7 @@ var MODELS = window.MODELS = {
 	Merchant: Backbone.Model.extend({
 	}, {
 		schema: [
-			{name: 'id', title: 'ID', pk: true},
+			{name: 'id', title: 'ID'},
 			{name: 'name', title: 'Имя'},
 			{name: 'email', title: 'Мыло'},
 			{name: 'regDate', title: 'С какого', format: 'date'},
@@ -67,7 +88,7 @@ var MODELS = window.MODELS = {
 	Admin: Backbone.Model.extend({
 	}, {
 		schema: [
-			{name: 'id', title: 'ID', pk: true},
+			{name: 'id', title: 'ID'},
 			{name: 'name', title: 'Имя'},
 			{name: 'email', title: 'Мыло'},
 			{name: 'regDate', title: 'С какого', format: 'date'},
@@ -166,20 +187,19 @@ var ErrorApp = Backbone.View.extend({
 	initialize: function(){
 		_.bindAll(this, 'render');
 		this.model.bind('change:errors', this.render);
-	},
+	}
 });
 
 var HeaderApp = Backbone.View.extend({
 	model: model,
 	el: $('#header'),
-	template: _.partial('header'),
 	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
+		this.el.html(_.partial('header', this.model.toJSON()));
 		return this;
 	},
 	events: {
 		'submit #login': 'login',
-		'submit #logout': 'logout',
+		'click a[href=#logout]': 'logout',
 		'submit #signup': 'signup'
 	},
 	initialize: function(){
@@ -250,13 +270,12 @@ var HeaderApp = Backbone.View.extend({
 var FooterApp = Backbone.View.extend({
 	model: model,
 	el: $('#footer'),
-	template: _.partial('footer'),
 	render: function(){
-		this.el.html(this.template({
+		this.el.html(_.partial('footer', {
 			//
 			// 4-digit year as string -- to be used in copyright (c) 2010-XXXX
 			//
-			year: (new Date()).toISOString().substring(0, 4),
+			year: (new Date()).toISOString().substring(0, 4)
 		}));
 		return this;
 	},
@@ -269,9 +288,8 @@ var FooterApp = Backbone.View.extend({
 var NavApp = Backbone.View.extend({
 	model: model,
 	el: $('#nav'),
-	template: _.partial('navigation'),
 	render: function(){
-		this.el.html(this.template(this.model.toJSON()));
+		this.el.html(_.partial('navigation', this.model.toJSON()));
 		return this;
 	},
 	events: {
@@ -296,7 +314,9 @@ var EntityView = Backbone.View.extend({
 		var entity = model.get('entity');
 		var name = entity.name;
 		console.log('VIEWRENDER', this, name, entity.query+'');
-		var schema = MODELS[name] && MODELS[name].schema || [{name: 'id', title: 'ID', pk: true}];
+		//var schema = MODELS[name] && MODELS[name].schema || [{name: 'id', title: 'ID', pk: true}];
+		var schema = model.get('schema');
+		schema = schema && schema[name] && schema[name].properties || {};
 		var query = this.query = RQL.Query(entity.query+'').normalize({clear: _.pluck(schema, 'name')});
 		var props = schema;
 		if (query.selectArr.length) {
@@ -567,14 +587,30 @@ var EditorView = Backbone.View.extend({
 	}
 });
 
+var AccountView = Backbone.View.extend({
+	render: function(){
+		var user = model.get('user');
+		$(this.el).html(_.partial(['account'], {
+			user: user.toJSON()
+		}));
+		this.delegateEvents();
+		return this;
+	},
+	events: {
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+		model.bind('change:user', this.render);
+	}
+});
+
 var App = Backbone.View.extend({
 	model: model,
 	el: $('#content'),
-	template: _.partial('content'),
 	render: function(){
-		console.log('APPRENDER', this.model);
+		console.log('APPRENDER1', this.model);
 		// render content element
-		this.el.html(this.template(this.model.toJSON()));
+		this.el.html(_.partial('content', this.model.toJSON()));
 		// render entity explorer to content element
 		this.$('#entity').html(this.view.render().el);
 		return this;
@@ -586,6 +622,8 @@ var App = Backbone.View.extend({
 		this.model.bind('change:entity', this.render);
 		// create entity viewer
 		this.view = new EntityView;
+		// create account EditorView
+		this.account = new AccountView;
 	}
 });
 
@@ -618,6 +656,12 @@ var Controller = Backbone.Controller.extend({
 		// root
 		this.route(/^$/, 'root', function(){
 			console.log('ROOT');
+			var entity = model.get('entity');
+			entity.dispose();
+		});
+		// account
+		this.route(/^account$/, 'account', function(){
+			console.log('ACCOUNT');
 			var entity = model.get('entity');
 			entity.dispose();
 		});
@@ -665,6 +709,8 @@ $(document)
 });
 
 /////////////////////
+
+});
 
 });
 
