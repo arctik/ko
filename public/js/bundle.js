@@ -2891,7 +2891,7 @@ if (!String.prototype.trim) {
       var html;
       if (html = this._escapedAttributes[attr]) return html;
       var val = this.attributes[attr];
-      return this._escapedAttributes[attr] = escapeHTML(val == null ? '' : val);
+      return this._escapedAttributes[attr] = escapeHTML(val == null ? '' : '' + val);
     },
 
     // Returns `true` if the attribute contains a value that is not null
@@ -3672,21 +3672,24 @@ if (!String.prototype.trim) {
   // it difficult to read the body of `PUT` requests.
   Backbone.sync = function(method, model, options) {
     var type = methodMap[method];
-    var modelJSON = (method === 'create' || method === 'update') ?
-                    JSON.stringify(model.toJSON()) : null;
 
     // Default JSON-request options.
     var params = _.extend({
-      url:          getUrl(model),
       type:         type,
       contentType:  'application/json',
-      data:         modelJSON,
       dataType:     'json',
       processData:  false
     }, options);
 
     // Ensure that we have a URL.
-    if (!params.url) urlError();
+    if (!params.url) {
+      params.url = getUrl(model) || urlError();
+    }
+
+    // Ensure that we have the appropriate request data.
+    if (!params.data && model && (method == 'create' || method == 'update')) {
+      params.data = JSON.stringify(model.toJSON());
+    }
 
     // For older servers, emulate JSON by encoding the request into an HTML-form.
     if (Backbone.emulateJSON) {
@@ -3731,6 +3734,9 @@ if (!String.prototype.trim) {
     } else {
       child = function(){ return parent.apply(this, arguments); };
     }
+
+    // Inherit class (static) properties from parent.
+    _.extend(child, parent);
 
     // Set the prototype chain to inherit from `parent`, without calling
     // `parent`'s constructor function.

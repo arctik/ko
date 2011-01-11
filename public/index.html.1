@@ -177,13 +177,13 @@ Cursus est risus hendrerit et <br>
 					<% }); %>
 				</tr>
 			</thead>
-			<tbody class="action-select-list"><% items.each(function(item){ var id = item.id; %>
-				<tr class="action-select-row<% if (selected.indexOf(id) >= 0) { %> selected<% } %>" rel="<%=id%>">
-					<td class="actions"><% if (methods.update || methods.remove) { %><input type="checkbox" class="action-select" <% if (selected.indexOf(id) >= 0) { %>checked="checked"<% } %> /><% } %></td>
-					<% _.each(props, function(prop, name){ var val = item.escape(name); if (prop.type === 'date') val = (new Date(item.get(name))).toISOString(); %>
+			<tbody class="action-select-list"><% _.each(items, function(item){ %>
+				<tr class="action-select-row<% if (selected.indexOf(item.id) >= 0) { %> selected<% } %>" rel="<%=item.id%>">
+					<td class="actions"><% if (methods.update || methods.remove) { %><input type="checkbox" class="action-select" <% if (selected.indexOf(item.id) >= 0) { %>checked="checked"<% } %> /><% } %></td>
+					<% _.each(props, function(prop, name){ var val = item[name]; if (prop.type === 'date') val = (new Date(val)).toISOString(); %>
 					<td>
 					<% if (name === 'id') { %>
-						<a class="action-open" rel="<%=id%>" href="#<%=name%>/<%=id%>"><%=val%></a>
+						<a class="action-open" rel="<%=item.id%>" href="#<%=name%>/<%=item.id%>"><%=val%></a>
 					<% } else { %>
 						<%=val%>
 					<% } %>
@@ -236,8 +236,8 @@ Cursus est risus hendrerit et <br>
 
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
 <form style="position: fixed;">
-	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=data.escape('cur')%>" /></label></div>
-	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=data.escape('value')%>" /></label></div>
+	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=data.cur%>" /></label></div>
+	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=data.value%>" /></label></div>
 	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids, methods: methods})%></div>
 </form>
 </script>
@@ -247,8 +247,8 @@ Cursus est risus hendrerit et <br>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
 	<% } %>
-	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.escape('name')%>" /></label></div>
-	<div class="form-field"><label>Нацназвание<input type="text" name="localName" value="<%=data.escape('localName')%>" /></label></div>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name%>" /></label></div>
+	<div class="form-field"><label>Нацназвание<input type="text" name="localName" value="<%=data.localName%>" /></label></div>
 	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids, methods: methods})%></div>
 </form>
 </script>
@@ -264,8 +264,8 @@ Cursus est risus hendrerit et <br>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
 	<% } %>
-	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.escape('name')%>" /></label></div>
-	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.escape('email')%>" /></label></div>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.email%>" /></label></div>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
 	<% } %>
@@ -279,8 +279,8 @@ Cursus est risus hendrerit et <br>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
 	<% } %>
-	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.escape('name')%>" /></label></div>
-	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.escape('email')%>" /></label></div>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.email%>" /></label></div>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
 	<% } %>
@@ -294,8 +294,8 @@ Cursus est risus hendrerit et <br>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
 	<% } %>
-	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.escape('name')%>" /></label></div>
-	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.escape('email')%>" /></label></div>
+	<div class="form-field"><label>Имя<input type="text" name="name" value="<%=data.name%>" /></label></div>
+	<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=data.email%>" /></label></div>
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>Пароль<input type="password" name="password" /></label></div>
 	<% } %>

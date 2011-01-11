@@ -1,5 +1,7 @@
 /*
  * TODO:
+ * 4/5 Entity should have methods .schema(), .methods()
+ * 0/5 Entity should enclose selected ids
  * form from schema
  * login/logoff should reload the page, or at least session
  * i18n switch -- reload
@@ -17,6 +19,7 @@ require({
 ], function(x1, RQL, i18nForms){
 	window.RQL = RQL;
 $.getJSON('/home', function(session){
+	console.log('SESSION', session);
 
 // improve _
 _.mixin({
@@ -295,7 +298,7 @@ var EntityView = Backbone.View.extend({
 		// render list
 		$(this.el).html(name ? _.partial([name+'-list', 'list'], {
 			name: name,
-			items: entity,
+			items: entity.toJSON(),
 			selected: entity.selected,
 			query: query,
 			props: props,
@@ -305,6 +308,23 @@ var EntityView = Backbone.View.extend({
 		// render inspector
 		if (methods.update || methods.remove || methods.add) {
 			this.renderEditor();
+			//this.$('#inspector').html(this.inspector.render().el);
+			/*var ids = entity.selected;
+			var m;
+			console.log('INSPECT', ids);
+			if (ids.length === 1) {
+				m = entity.get(ids[0]);
+			}
+			if (!m) {
+				m = new Backbone.Model;
+				m.collection = entity;
+			}
+			this.$('#inspector').html(_.partial([name+'-form', 'form'], {
+				ids: ids,
+				data: m.toJSON(),
+				props: props,
+				methods: methods
+			}));*/
 		}
 
 		// N.B. workaround: textchange event can not be delegated...
@@ -332,7 +352,7 @@ var EntityView = Backbone.View.extend({
 		if (methods.update || methods.remove || methods.add) {
 			var ids = entity.selected;
 			var m;
-			//console.log('INSPECT', ids);
+			console.log('INSPECT', ids);
 			if (ids.length === 1) {
 				m = entity.get(ids[0]);
 			}
@@ -342,7 +362,7 @@ var EntityView = Backbone.View.extend({
 			}
 			this.$('#inspector').html(_.partial([name+'-form', 'form'], {
 				ids: ids,
-				data: m,
+				data: m.toJSON(),
 				props: props,
 				methods: methods
 			}));
@@ -374,6 +394,8 @@ var EntityView = Backbone.View.extend({
 		entity.bind('all', function(){
 			console.log('ENTITYEVENT', arguments);
 		});
+		// create instance viewer/editor
+		//this.inspector = new EditorView;
 	},
 	open: function(e){
 		var id = [$(e.target).attr('rel')];
@@ -544,6 +566,65 @@ var EntityView = Backbone.View.extend({
 	}
 });
 
+var EditorView = Backbone.View.extend({
+	render: function(){
+		var entity = model.get('entity');
+		var name = entity.name;
+		var schema = entity.schema();
+		var methods = entity.methods();
+		var ids = entity.selected;
+		var m;
+		console.log('INSPECT', ids);
+		if (ids.length === 1) {
+			m = entity.get(ids[0]);
+		}
+		if (!m) {
+			m = new Backbone.Model;
+			m.collection = entity;
+		}
+		$(this.el).html(_.partial([name+'-form', 'form'], {
+			ids: ids,
+			data: m.toJSON(),
+			props: schema,
+			methods: methods
+		}));
+		this.delegateEvents();
+		return this;
+	},
+	/*events: {
+		'submit form': 'updateSelectedOrCreate',
+		'click .action-remove': 'removeSelected'
+	},*/
+	initialize: function(){
+		_.bindAll(this, 'render');
+		var entity = model.get('entity');
+		entity.bind('selection', this.render);
+	},
+	removeSelected111: function(e){
+		var entity = model.get('entity');
+		entity.destroySelected();
+		return false;
+	},
+	updateSelectedOrCreate111: function(e){
+		var entity = model.get('entity');
+		var ids = entity.selected;
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('TOSAVE?', ids, props);
+		try {
+			// multi update
+			if (ids.length > 0) {
+				entity.updateSelected(props);
+			// create new
+			} else {
+				entity.create(props);
+			}
+		} catch (x) {
+			console.log('EXC', x, props);
+		}
+		return false;
+	}
+});
+
 var AccountView = Backbone.View.extend({
 	render: function(){
 		var user = model.get('user');
@@ -577,12 +658,9 @@ var App = Backbone.View.extend({
 		// re-render upon model change
 		this.model.bind('change:user', this.render);
 		this.model.bind('change:entity', this.render);
-		this.model.bind('change', function(x, schema){
-			console.log('SCHEMA', x, schema);
-		});
 		// create entity viewer
 		this.view = new EntityView;
-		// create account View
+		// create account EditorView
 		//this.account = new AccountView;
 	}
 });
@@ -643,7 +721,7 @@ new HeaderApp;
 new NavApp;
 new FooterApp;
 new App;
-model.set(session);
+window.model.set(session);
 
 // let the history begin
 var controller = new Controller();

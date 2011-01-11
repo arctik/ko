@@ -1,5 +1,7 @@
 /*
  * TODO:
+ * 4/5 Entity should have methods .schema(), .methods()
+ * 0/5 Entity should enclose selected ids
  * form from schema
  * login/logoff should reload the page, or at least session
  * i18n switch -- reload
@@ -17,6 +19,7 @@ require({
 ], function(x1, RQL, i18nForms){
 	window.RQL = RQL;
 $.getJSON('/home', function(session){
+	console.log('SESSION', session);
 
 // improve _
 _.mixin({
@@ -291,20 +294,19 @@ var EntityView = Backbone.View.extend({
 			props = selectedProps;
 		}
 		//console.log('RENDER ENTITY', items);
-
-		// render list
 		$(this.el).html(name ? _.partial([name+'-list', 'list'], {
 			name: name,
-			items: entity,
+			items: entity.toJSON(),
 			selected: entity.selected,
 			query: query,
 			props: props,
 			methods: methods
 		}) : 'XXX');
+		this.delegateEvents();
 
 		// render inspector
 		if (methods.update || methods.remove || methods.add) {
-			this.renderEditor();
+			this.$('#inspector').html(this.inspector.render().el);
 		}
 
 		// N.B. workaround: textchange event can not be delegated...
@@ -323,32 +325,6 @@ var EntityView = Backbone.View.extend({
 
 		return this;
 	},
-	renderEditor: function(){
-		var entity = model.get('entity');
-		var name = entity.name;
-		var schema = entity.schema();
-		var methods = entity.methods();
-		var props = schema;
-		if (methods.update || methods.remove || methods.add) {
-			var ids = entity.selected;
-			var m;
-			//console.log('INSPECT', ids);
-			if (ids.length === 1) {
-				m = entity.get(ids[0]);
-			}
-			if (!m) {
-				m = new Backbone.Model;
-				m.collection = entity;
-			}
-			this.$('#inspector').html(_.partial([name+'-form', 'form'], {
-				ids: ids,
-				data: m,
-				props: props,
-				methods: methods
-			}));
-		}
-		return this;
-	},
 	events: {
 		'change .action-select:enabled': 'selectRow',
 		'click .action-select:enabled': 'selectSequence',
@@ -358,48 +334,10 @@ var EntityView = Backbone.View.extend({
 		'click .action-sort': 'sort',
 		'change .action-limit': 'setPageSize',
 		'click .pager a': 'gotoPage',
-		'click .action-open': 'open',
-		'submit form': 'updateSelectedOrCreate',
-		'click .action-remove': 'removeSelected'
-	},
-	initialize: function(){
-		_.bindAll(this, 'render', 'renderEditor');
-		// re-render upon model changes
-		var entity = model.get('entity');
-		entity.bind('change', this.render);
-		entity.bind('add', this.render);
-		entity.bind('remove', this.render);
-		entity.bind('refresh', this.render);
-		entity.bind('selection', this.renderEditor);
-		entity.bind('all', function(){
-			console.log('ENTITYEVENT', arguments);
-		});
+		'click .action-open': 'open'
 	},
 	open: function(e){
 		var id = [$(e.target).attr('rel')];
-		return false;
-	},
-	removeSelected: function(e){
-		var entity = model.get('entity');
-		entity.destroySelected();
-		return false;
-	},
-	updateSelectedOrCreate: function(e){
-		var entity = model.get('entity');
-		var ids = entity.selected;
-		var props = $(e.target).serializeObject({filterEmpty: true});
-		console.log('TOSAVE?', ids, props);
-		try {
-			// multi update
-			if (ids.length > 0) {
-				entity.updateSelected(props);
-			// create new
-			} else {
-				entity.create(props);
-			}
-		} catch (x) {
-			console.log('EXC', x, props);
-		}
 		return false;
 	},
 	reload: function(){
@@ -541,6 +479,79 @@ var EntityView = Backbone.View.extend({
 			this.reload();
 		}
 		return false;
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+		// re-render upon model changes
+		var entity = model.get('entity');
+		entity.bind('change', this.render);
+		entity.bind('add', this.render);
+		entity.bind('remove', this.render);
+		entity.bind('refresh', this.render);
+		entity.bind('all', function(){
+			console.log('ENTITYEVENT', arguments);
+		});
+		// create instance viewer/editor
+		this.inspector = new EditorView;
+	}
+});
+
+var EditorView = Backbone.View.extend({
+	render: function(){
+		var entity = model.get('entity');
+		var name = entity.name;
+		var schema = entity.schema();
+		var methods = entity.methods();
+		var ids = entity.selected;
+		var m;
+		console.log('INSPECT', ids);
+		if (ids.length === 1) {
+			m = entity.get(ids[0]);
+		}
+		if (!m) {
+			m = new Backbone.Model;
+			m.collection = entity;
+		}
+		$(this.el).html(_.partial([name+'-form', 'form'], {
+			ids: ids,
+			data: m.toJSON(),
+			props: schema,
+			methods: methods
+		}));
+		this.delegateEvents();
+		return this;
+	},
+	events: {
+		'submit form': 'updateSelectedOrCreate',
+		'click .action-remove': 'removeSelected'
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+		var entity = model.get('entity');
+		entity.bind('selection', this.render);
+	},
+	removeSelected: function(e){
+		var entity = model.get('entity');
+		entity.destroySelected();
+		return false;
+	},
+	updateSelectedOrCreate: function(e){
+		var entity = model.get('entity');
+		var ids = entity.selected;
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('TOSAVE?', ids, props);
+		try {
+			// multi update
+			if (ids.length > 0) {
+				entity.updateSelected(props);
+			// create new
+			} else {
+				entity.create(props);
+			}
+		} catch (x) {
+			console.log('EXC', x, props);
+		}
+		return false;
 	}
 });
 
@@ -577,12 +588,9 @@ var App = Backbone.View.extend({
 		// re-render upon model change
 		this.model.bind('change:user', this.render);
 		this.model.bind('change:entity', this.render);
-		this.model.bind('change', function(x, schema){
-			console.log('SCHEMA', x, schema);
-		});
 		// create entity viewer
 		this.view = new EntityView;
-		// create account View
+		// create account EditorView
 		//this.account = new AccountView;
 	}
 });
@@ -643,7 +651,7 @@ new HeaderApp;
 new NavApp;
 new FooterApp;
 new App;
-model.set(session);
+window.model.set(session);
 
 // let the history begin
 var controller = new Controller();

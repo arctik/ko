@@ -98,7 +98,9 @@ model.User = Model 'User', Store('User'),
 			() ->
 				@get data.id
 			(user) ->
-				return SyntaxError 'Already exists' if user
+				#console.log 'USER', user
+				return user if user instanceof Error
+				return SyntaxError 'Cannot create such user' if user
 				# TODO: password set, notify the user
 				# TODO: notify only if added OK!
 				# create salt, hash salty password
@@ -346,7 +348,12 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 		#s = _.keys session.context
 		s = {}
 		for k, v of session.context
-			s[k] = v.schema
+			s[k] =
+				schema: v.schema
+				methods:
+					add: not not v.add
+					update: not not v.update
+					remove: not not v.remove
 		#s = session.context
 		user: session.user, schema: s
 	login: model.User.login.bind model.User
@@ -354,7 +361,16 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 
 FacetForUser = Compose.create FacetForGuest, {
 	profile: model.User.profile.bind model.User
-	Course: RestrictiveFacet model.Course
+	Course: RestrictiveFacet model.Course,
+		schema:
+			properties:
+				cur:
+					type: 'string'
+					pattern: '[A-Z]{3}'
+				value:
+					type: 'number'
+				date:
+					type: 'date'
 }
 
 # root -- hardcoded DB owner
@@ -368,8 +384,8 @@ FacetForRoot = Compose.create FacetForUser, {
 					pattern: '[A-Z]{3}'
 				value:
 					type: 'number'
-				email:
-					date: 'date'
+				date:
+					type: 'date'
 	, 'fetch'
 	Affiliate: PermissiveFacet model.Affiliate,
 		schema:
@@ -414,12 +430,10 @@ FacetForRoot = Compose.create FacetForUser, {
 }
 
 FacetForAffiliate = Compose.create FacetForUser, {
-	#Affiliate: RestrictiveFacet model.Affiliate
-	Language: PermissiveFacet model.Language
+	Language: FacetForRoot.Language
 }
 
 FacetForMerchant = Compose.create FacetForUser, {
-	#Merchant: RestrictiveFacet model.Merchant
 }
 
 # admin -- powerful user

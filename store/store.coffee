@@ -155,6 +155,7 @@ class Storage extends Database
 		#console.log 'FIND?', query
 		query = parse query
 		#console.log 'FIND!', query
+		return URIError query.terms.search.error if query.terms.search.error
 		# limit the limit
 		query.meta.limit = 1 if query.terms.pk
 		#query.meta.limit = @limit if @limit < query.meta.limit
