@@ -78,7 +78,7 @@
 		<% if (user.id) { %>
 		<a href="#" class="toggle"><%= user.type %>&nbsp;<%= user.name || user.email || user.id %>&nbsp;&nabla;</a>
 		<div style="display: none;">
-			<p><a href="#account"><%=_.T('accountSettings')%></a>
+			<p><a href="#profile"><%=_.T('profileSettings')%></a>
 			<p><a href="#logout"><%=_.T('loginLogout')%></a>
 		</div>
 		<% } else { %>
@@ -106,7 +106,6 @@
 		&copy; 2010<% if (year !== '2010') { %>-<%=year%><% } %> Your company here
 	</div>
 	<div class="grid_8 omega">
-		<a href="#contact">Contact us</a>
 	</div>
 </script>
 
@@ -125,7 +124,7 @@
 </script>
 
 <script id="tmpl-home" type="text/x-jquery-tmpl">
-	<div>
+	<div class="grid_12 alpha">
 Lorem ipsum dolor sit amet <br>
 Consectetuer lacinia volutpat vestibulum id <br>
 Vitae nulla penatibus facilisi id <br>
@@ -141,24 +140,33 @@ Sapien dolor Phasellus lorem Duis <br>
 Pellentesque at pretium lacus ornare <br>
 Cursus est risus hendrerit et <br>
 	</div>
+	<div class="grid_4 omega">
+	<form id="action-support-post-request">
+		<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=user && user.email%>" /></label></div>
+		<div class="form-field"><label>Subject<input type="text" name="subject" /></label></div>
+		<div class="form-field"><label>Body<textarea name="body"></textarea></label></div>
+		<div class="form-field"><label>Captcha<input type="text" name="captcha" /></label></div>
+		<div class="buttons"><button type="submit"><%=_.T('homeSupportPostRequest')%></button></div>
+	</form>
+	</div>
 </script>
 
-<script id="tmpl-account" type="text/x-jquery-tmpl">
+<script id="tmpl-profile" type="text/x-jquery-tmpl">
 <div class="grid_8 omega">
-	<form id="action-account-change-name">
+	<form id="action-profile-change-name">
 		<div class="form-field"><label>ID<input type="text" value="<%=user.escape('id')%>" readonly="readonly" /></label></div>
 		<div class="form-field"><label>Имя<input type="text" name="name" value="<%=user.escape('name')%>" /></label></div>
-		<div class="buttons"><button type="submit"><%=_.T('accountChangeName')%></button></div>
+		<div class="buttons"><button type="submit"><%=_.T('profileChangeName')%></button></div>
 	</form>
-	<form id="action-account-change-email">
+	<form id="action-profile-change-email">
 		<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=user.escape('email')%>" /></label></div>
-		<div class="buttons"><button type="submit"><%=_.T('accountChangeEmail')%></button></div>
+		<div class="buttons"><button type="submit"><%=_.T('profileChangeEmail')%></button></div>
 	</form>
-	<form id="action-account-change-password">
+	<form id="action-profile-change-password">
 		<div class="form-field"><label>Старый пароль<input type="password" name="oldPassword" /></label></div>
 		<div class="form-field"><label>Новый пароль<input type="password" name="newPassword" /></label></div>
 		<div class="form-field"><label>Подтверждение пароля<input type="password" name="confirmPassword" /></label></div>
-		<div class="buttons"><button type="submit"><%=_.T('accountChangePassword')%></button></div>
+		<div class="buttons"><button type="submit"><%=_.T('profileChangePassword')%></button></div>
 	</form>
 </div>
 </script>

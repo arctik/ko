@@ -22,7 +22,7 @@ root: {
 
 	"loginInvalid": "Hope you just forgot your credentials... Try once more",
 
-	"accountSettings": "Settings",
+	"profileSettings": "Settings",
 
 	"formSave": "Save",
 	"formUpdate": "Update",

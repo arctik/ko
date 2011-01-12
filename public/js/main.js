@@ -6,7 +6,7 @@
 
 var model;
 
-var currentLocale = 'ru'; // FIXME: force locale here. cookie?
+var currentLocale = 'en'; // FIXME: force locale here. cookie?
 require({
 	locale: currentLocale
 }, [
@@ -15,7 +15,7 @@ require({
 	'i18n!nls/forms', // i18n
 ], function(x1, RQL, i18nForms){
 	window.RQL = RQL;
-$.getJSON('/home', function(session){
+//$.getJSON('/home', function(session){
 
 // improve _
 _.mixin({
@@ -32,10 +32,6 @@ _.mixin({
 				//console.log('PART!', text);
 			}
 		});
-		//if (data) {
-		//	data = _.extend(data, {i18n: i18nForms});
-		//}
-		//console.log('DATA', data);
 		return text ? _.template(text, data) : '';
 	},
 	// i18n-aware strings
@@ -49,9 +45,6 @@ _.mixin({
 		return text;
 	}
 });
-
-// DOM is loaded
-require.ready(function(){
 
 var Entity = Backbone.Collection.extend({
 	selected: [],
@@ -135,12 +128,17 @@ var Entity = Backbone.Collection.extend({
 	}
 });
 
-// central model
-var model = window.model = new Backbone.Model({
+// DOM is loaded
+require.ready(function(){ //
+
+// central model -- global scope
+model = new Backbone.Model({
 	errors: [],
 	page: '',
 	entity: new Entity()
 });
+model.url = '/home';
+model.fetch({success: function(session){
 
 var ErrorApp = Backbone.View.extend({
 	model: model,
@@ -546,27 +544,52 @@ var AdminApp = Backbone.View.extend({
 var HomeApp = Backbone.View.extend({
 	render: function(){
 		$(this.el).html(_.partial('home', model.toJSON()));
+		try {
 		this.delegateEvents();
+		} catch (x) {
+			console.log('EXCCC', x);
+		}
+		console.log('DELEGATED');
 		return this;
+	},
+	events: {
+		'submit #action-support-post-request': 'postRequest'
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+		model.bind('change:user', this.render);
+	},
+	postRequest: function(e){
+		console.log('PR');
+		return false;
+		try {
+		//var props = $(e.target).serializeObject();
+		//$.post('/request', props, function(data){
+		//	console.log('REQPOSTED', data, props);
+		//});
+		} catch (x) {
+			console.log('EXCCC', x);
+		}
+		return false;
 	}
 });
 
-var AccountApp = Backbone.View.extend({
+var ProfileApp = Backbone.View.extend({
 	render: function(){
 		var user = model.get('user');
 		this.user = new Backbone.Model(user);
 		delete this.user.id;
 		this.user.url = '/change';
-		$(this.el).html(_.partial('account', {
+		$(this.el).html(_.partial('profile', {
 			user: this.user
 		}));
 		this.delegateEvents();
 		return this;
 	},
 	events: {
-		'submit #action-account-change-name': 'changeName',
-		'submit #action-account-change-email': 'changeEmail',
-		'submit #action-account-change-password': 'changePassword'
+		'submit #action-profile-change-name': 'changeName',
+		'submit #action-profile-change-email': 'changeEmail',
+		'submit #action-profile-change-password': 'changePassword'
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
@@ -578,8 +601,9 @@ var AccountApp = Backbone.View.extend({
 		try {
 			this.user.save(props, {
 				success: function(data){
-					console.log('CHNAME!', data);
-					model.set({user: data});
+					location.reload();
+					//console.log('CHNAME!', data);
+					//model.set({user: data});
 				}
 			});
 		} catch (x) {
@@ -599,24 +623,32 @@ var AccountApp = Backbone.View.extend({
 	}
 });
 
+//
+// #content application
+//
 var App = Backbone.View.extend({
-	model: model,
 	el: $('#content'),
 	render: function(){
-		var page = this.model.get('page');
-		console.log('APPRENDER', this.model, page);
+		var page = model.get('page');
+		console.log('APPRENDER', model, page);
 		switch (page) {
 			case 'admin':
 				// render entity explorer
-				this.el.html(this.admin.render().el);
+				$(this.el).unbind();
+				if (!this.admin) this.admin = new AdminApp({el: this.el});
+				this.admin.render();
 				break;
-			case 'account':
-				// render account inspector
-				this.el.html(this.account.render().el);
+			case 'profile':
+				// render profile inspector
+				$(this.el).unbind();
+				if (!this.profile) this.profile = new ProfileApp({el: this.el});
+				this.profile.render();
 				break;
 			default:
 				// render welcome page
-				this.el.html(this.home.render().el);
+				$(this.el).unbind();
+				if (!this.home) this.home = new HomeApp({el: this.el});
+				this.home.render();
 				break;
 		}
 		return this;
@@ -624,23 +656,23 @@ var App = Backbone.View.extend({
 	initialize: function(){
 		_.bindAll(this, 'render');
 		// re-render upon model change
-		this.model.bind('change:user', this.render);
-		this.model.bind('change:page', this.render);
-		//this.model.bind('change:entity', this.render);
-		this.model.bind('all', function(){
+		model.bind('change:user', this.render);
+		model.bind('change:page', this.render);
+		//model.bind('change:entity', this.render);
+		model.bind('all', function(){
 			console.log('CHROME', arguments);
 		});
-		this.home = new HomeApp;
-		this.account = new AccountApp;
-		this.admin = new AdminApp;
 	}
 });
 
+//
+// controller listens to the route and sets chrome model attributes
+//
 var Controller = Backbone.Controller.extend({
 	routes: {
 		// url --> handler
-		'contact': 'contactUs',
-		'account': 'account'
+		'admin': 'admin',
+		'profile': 'profile'
 	},
 	initialize: function(){
 		// entity viewer
@@ -665,21 +697,18 @@ var Controller = Backbone.Controller.extend({
 				}
 			});
 		});
-		this.route(/^admin$/, 'admin', function(){
-			model.set({page: 'admin'});
-			var entity = model.get('entity');
-			entity.dispose();
-		});
 		// root
 		this.route(/^$/, 'root', function(){
 			model.set({page: 'home'});
 		});
 	},
-	account: function(){
-		model.set({page: 'account'});
+	admin: function(){
+		model.set({page: 'admin'});
+		var entity = model.get('entity');
+		entity.dispose();
 	},
-	contactUs: function(){
-		console.log('CONTACTUS');
+	profile: function(){
+		model.set({page: 'profile'});
 	}
 });
 
@@ -694,7 +723,20 @@ new HeaderApp;
 new NavApp;
 new FooterApp;
 new App;
-model.set(session);
+
+//model.set(session);
+
+window.t = new Backbone.Model({
+	u: new Backbone.Model({
+		name: 'foo'
+	})
+});
+t.bind('all', function(){
+	console.log('T:', arguments);
+});
+t.get('u').bind('all', function(){
+	console.log('U:', arguments);
+});
 
 // let the history begin
 var controller = new Controller();
@@ -722,8 +764,8 @@ $(document)
 
 /////////////////////
 
-});
+}}); // model.fetch
 
-});
+}); // require.ready
 
-});
+}); // require

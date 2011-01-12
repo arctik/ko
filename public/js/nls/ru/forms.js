@@ -20,7 +20,7 @@ define({
 
 	"loginInvalid": "Неправильные учетные данные... Попробуйте еще раз",
 
-	"accountSettings": "Настройки",
+	"profileSettings": "Настройки",
 
 	"formSave": "Сохранить",
 	"formUpdate": "Изменить",

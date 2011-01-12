@@ -2019,7 +2019,7 @@ if (!String.prototype.trim) {
 // Documentation: https://github.com/edtsech/underscore.string
 // Some code is borrowed from MooTools and Alexandru Marasteanu.
 
-// Version 2.1.0
+// Version 0.9.2
 
 
 (function(){
