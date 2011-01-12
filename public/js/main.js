@@ -1,7 +1,13 @@
 /*
  * TODO:
+ * RQL as _ plugin
  * form from schema
  * i18n switch -- reload
+ * make chrome model attribute user also model
+ * get rid of Entity#selected in favor of View#selected
+ * navigation should honor model.schema
+ * centralized error showing
+ * !!!filters again!!!
  */
 
 var model;
@@ -14,8 +20,8 @@ require({
 	'rql',
 	'i18n!nls/forms', // i18n
 ], function(x1, RQL, i18nForms){
-	window.RQL = RQL;
-//$.getJSON('/home', function(session){
+
+window.RQL = RQL;
 
 // improve _
 _.mixin({
@@ -46,6 +52,7 @@ _.mixin({
 	}
 });
 
+// extended Collection
 var Entity = Backbone.Collection.extend({
 	selected: [],
 	error: function(xhr){
@@ -131,37 +138,25 @@ var Entity = Backbone.Collection.extend({
 // DOM is loaded
 require.ready(function(){ //
 
-// central model -- global scope
-model = new Backbone.Model({
-	errors: [],
-	page: '',
-	entity: new Entity()
-});
-model.url = '/home';
-model.fetch({success: function(session){
-
 var ErrorApp = Backbone.View.extend({
-	model: model,
 	el: $('#errors'),
-	template: _.partial('errors'),
 	render: function(){
-		console.log('SHOWERRS', this.model.toJSON());
-		this.el.html(this.template(this.model.toJSON()));
+		console.log('SHOWERRS', model.toJSON());
+		this.el.html(_.partial('errors', model.toJSON()));
 		return this;
 	},
 	events: {
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		this.model.bind('change:errors', this.render);
+		model.bind('change:errors', this.render);
 	}
 });
 
 var HeaderApp = Backbone.View.extend({
-	model: model,
 	el: $('#header'),
 	render: function(){
-		this.el.html(_.partial('header', this.model.toJSON()));
+		this.el.html(_.partial('header', model.toJSON()));
 		return this;
 	},
 	events: {
@@ -171,7 +166,7 @@ var HeaderApp = Backbone.View.extend({
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
+		model.bind('change', this.render);
 	},
 	//
 	// user authorization
@@ -233,7 +228,6 @@ var HeaderApp = Backbone.View.extend({
 });
 
 var FooterApp = Backbone.View.extend({
-	model: model,
 	el: $('#footer'),
 	render: function(){
 		this.el.html(_.partial('footer', {
@@ -244,25 +238,24 @@ var FooterApp = Backbone.View.extend({
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
+		model.bind('change', this.render);
 	}
 });
 
 var NavApp = Backbone.View.extend({
-	model: model,
 	el: $('#nav'),
 	render: function(){
-		this.el.html(_.partial('navigation', this.model.toJSON()));
+		this.el.html(_.partial('navigation', model.toJSON()));
 		return this;
 	},
 	events: {
-		'submit form': 'doSearch'
+		'submit #search': 'search'
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
-		this.model.bind('change', this.render);
+		model.bind('change', this.render);
 	},
-	doSearch: function(e){
+	search: function(e){
 		var text = $(e.target).find('input').val();
 		if (!text) return false;
 		alert('TODO SEARCH FOR ' + text);
@@ -717,14 +710,21 @@ var Controller = Backbone.Controller.extend({
 Backbone.emulateHTTP = true;
 Backbone.emulateJSON = true;
 
+// central model -- global scope
+model = new Backbone.Model({
+	errors: [],
+	page: '',
+	entity: new Entity()
+});
+model.url = '/home';
+model.fetch({success: function(session){
+
 //
 new ErrorApp;
 new HeaderApp;
 new NavApp;
 new FooterApp;
 new App;
-
-//model.set(session);
 
 window.t = new Backbone.Model({
 	u: new Backbone.Model({
