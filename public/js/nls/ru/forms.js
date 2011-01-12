@@ -18,6 +18,8 @@ define({
 	"loginPassword": "Пароль",
 	"loginStaySigned": "Оставаться в системе",
 
+	"loginInvalid": "Неправильные учетные данные... Попробуйте еще раз",
+
 	"accountSettings": "Настройки",
 
 	"formSave": "Сохранить",

@@ -68,7 +68,12 @@
 </script>
 
 <script id="tmpl-header" type="text/x-jquery-tmpl">
-	<div class="grid_12 alpha">&nbsp;</div>
+	<div class="grid_12 alpha">
+		<a href="/#">Home</a>
+		<% if (user.id) { %>
+		<a href="/#admin">Admin</a>
+		<% } %>
+	</div>
 	<div class="grid_4 omega">
 		<% if (user.id) { %>
 		<a href="#" class="toggle"><%= user.type %>&nbsp;<%= user.name || user.email || user.id %>&nbsp;&nabla;</a>
@@ -83,22 +88,16 @@
 				<input type="text" size="10" name="user" placeholder="<%=_.T('loginUsername')%>" />
 				<input type="password" size="10" name="pass" placeholder="<%=_.T('loginPassword')%>" />
 				<label><%=_.T('loginStaySigned')%><input type="checkbox" name="remember" /></label>
-				<div class="buttons"><%=_.partial(['simple-buttons'],{})%></div>
+				<div class="buttons"><%=_.partial('simple-buttons',{})%></div>
 			</form>
 			<!--a href="#signup" class="toggle"><%=_.T('loginSignup')%></a>
 			<form id="signup" class="modal" style="display: none;">
 				<input type="text" size="10" name="user" placeholder="<%=_.T('loginUsername')%>" />
 				<input type="password" size="10" name="pass" placeholder="<%=_.T('loginPassword')%>" />
-				<div class="buttons"><%=_.partial(['simple-buttons'],{})%></div>
+				<div class="buttons"><%=_.partial('simple-buttons',{})%></div>
 			</form-->
 		</div>
 		<% } %>
-	</div>
-</script>
-
-<script id="tmpl-account" type="text/x-jquery-tmpl">
-	<div class="grid_8 omega">
-		AAA
 	</div>
 </script>
 
@@ -112,12 +111,11 @@
 </script>
 
 <script id="tmpl-navigation" type="text/x-jquery-tmpl">
-	<% if (user.id) { %>
+	<% if (user.id && page === 'admin') { %>
 	<div class="menu grid_12 alpha">
-		<a href="/#">Home</a>
 		<a href="/#admin/Bar">Bar</a>
 		<a href="/#admin/Course">Courses</a>
-		<a href="/#admin/Language">Language</a>
+		<a href="/#admin/Language">Languages</a>
 		<a href="/#admin/Affiliate">Affiliates</a>
 		<a href="/#admin/Merchant">Merchants</a>
 		<a href="/#admin/Admin">Admins</a>
@@ -126,10 +124,7 @@
 	<% } %>
 </script>
 
-<script id="tmpl-content" type="text/x-jquery-tmpl">
-	<% if (user.id) { %>
-	<div id="entity"></div>
-	<% } else { %>
+<script id="tmpl-home" type="text/x-jquery-tmpl">
 	<div>
 Lorem ipsum dolor sit amet <br>
 Consectetuer lacinia volutpat vestibulum id <br>
@@ -146,7 +141,30 @@ Sapien dolor Phasellus lorem Duis <br>
 Pellentesque at pretium lacus ornare <br>
 Cursus est risus hendrerit et <br>
 	</div>
-	<% } %>
+</script>
+
+<script id="tmpl-account" type="text/x-jquery-tmpl">
+<div class="grid_8 omega">
+	<form id="action-account-change-name">
+		<div class="form-field"><label>ID<input type="text" value="<%=user.escape('id')%>" readonly="readonly" /></label></div>
+		<div class="form-field"><label>Имя<input type="text" name="name" value="<%=user.escape('name')%>" /></label></div>
+		<div class="buttons"><button type="submit"><%=_.T('accountChangeName')%></button></div>
+	</form>
+	<form id="action-account-change-email">
+		<div class="form-field"><label>E-mail<input type="text" name="email" value="<%=user.escape('email')%>" /></label></div>
+		<div class="buttons"><button type="submit"><%=_.T('accountChangeEmail')%></button></div>
+	</form>
+	<form id="action-account-change-password">
+		<div class="form-field"><label>Старый пароль<input type="password" name="oldPassword" /></label></div>
+		<div class="form-field"><label>Новый пароль<input type="password" name="newPassword" /></label></div>
+		<div class="form-field"><label>Подтверждение пароля<input type="password" name="confirmPassword" /></label></div>
+		<div class="buttons"><button type="submit"><%=_.T('accountChangePassword')%></button></div>
+	</form>
+</div>
+</script>
+
+<script id="tmpl-admin" type="text/x-jquery-tmpl">
+	<div id="entity"></div>
 </script>
 
 <script id="tmpl-list" type="text/x-jquery-tmpl">

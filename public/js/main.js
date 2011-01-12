@@ -1,7 +1,6 @@
 /*
  * TODO:
  * form from schema
- * login/logoff should reload the page, or at least session
  * i18n switch -- reload
  */
 
@@ -139,6 +138,7 @@ var Entity = Backbone.Collection.extend({
 // central model
 var model = window.model = new Backbone.Model({
 	errors: [],
+	page: '',
 	entity: new Entity()
 });
 
@@ -188,11 +188,10 @@ var HeaderApp = Backbone.View.extend({
 			data: JSON.stringify(data),
 			contentType: 'application/json',
 			success: function(newSession){
-				Backbone.history.saveLocation(null);
-				view.model.set(newSession);
+				location.href = '/';
 			},
 			error: function(){
-				alert('Hope you just forgot your credentials... Try once more');
+				alert(_.T('loginInvalid'));
 			}
 		});
 		return false;
@@ -205,8 +204,7 @@ var HeaderApp = Backbone.View.extend({
 			data: JSON.stringify({}),
 			contentType: 'application/json',
 			success: function(newSession){
-				Backbone.history.saveLocation(null);
-				view.model.set(newSession);
+				location.href = '/';
 			},
 			error: function(){
 				alert('Could not log off... Try once more');
@@ -241,9 +239,7 @@ var FooterApp = Backbone.View.extend({
 	el: $('#footer'),
 	render: function(){
 		this.el.html(_.partial('footer', {
-			//
 			// 4-digit year as string -- to be used in copyright (c) 2010-XXXX
-			//
 			year: (new Date()).toISOString().substring(0, 4)
 		}));
 		return this;
@@ -276,7 +272,7 @@ var NavApp = Backbone.View.extend({
 	}
 });
 
-var EntityView = Backbone.View.extend({
+var AdminApp = Backbone.View.extend({
 	_lastClickedRow: 0,
 	render: function(){
 		var entity = model.get('entity');
@@ -306,6 +302,9 @@ var EntityView = Backbone.View.extend({
 		if (methods.update || methods.remove || methods.add) {
 			this.renderEditor();
 		}
+
+		// don't forget to redelegate
+		this.delegateEvents();
 
 		// N.B. workaround: textchange event can not be delegated...
 		// reload the View after a 1 sec timeout elapsed after the last textchange event on filters
@@ -544,20 +543,59 @@ var EntityView = Backbone.View.extend({
 	}
 });
 
-var AccountView = Backbone.View.extend({
+var HomeApp = Backbone.View.extend({
+	render: function(){
+		$(this.el).html(_.partial('home', model.toJSON()));
+		this.delegateEvents();
+		return this;
+	}
+});
+
+var AccountApp = Backbone.View.extend({
 	render: function(){
 		var user = model.get('user');
-		$(this.el).html(_.partial(['account'], {
-			user: user
+		this.user = new Backbone.Model(user);
+		delete this.user.id;
+		this.user.url = '/change';
+		$(this.el).html(_.partial('account', {
+			user: this.user
 		}));
 		this.delegateEvents();
 		return this;
 	},
 	events: {
+		'submit #action-account-change-name': 'changeName',
+		'submit #action-account-change-email': 'changeEmail',
+		'submit #action-account-change-password': 'changePassword'
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
 		model.bind('change:user', this.render);
+	},
+	changeName: function(e){
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('CHNAME', props, this.user.toJSON());
+		try {
+			this.user.save(props, {
+				success: function(data){
+					console.log('CHNAME!', data);
+					model.set({user: data});
+				}
+			});
+		} catch (x) {
+			console.log('EXCCC', x);
+		}
+		return false;
+	},
+	changeEmail: function(e){
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('CHMAIL', props);
+		return false;
+	},
+	changePassword: function(e){
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('CHPASS', props);
+		return false;
 	}
 });
 
@@ -565,36 +603,49 @@ var App = Backbone.View.extend({
 	model: model,
 	el: $('#content'),
 	render: function(){
-		console.log('APPRENDER1', this.model);
-		// render content element
-		this.el.html(_.partial('content', this.model.toJSON()));
-		// render entity explorer to content element
-		this.$('#entity').html(this.view.render().el);
+		var page = this.model.get('page');
+		console.log('APPRENDER', this.model, page);
+		switch (page) {
+			case 'admin':
+				// render entity explorer
+				this.el.html(this.admin.render().el);
+				break;
+			case 'account':
+				// render account inspector
+				this.el.html(this.account.render().el);
+				break;
+			default:
+				// render welcome page
+				this.el.html(this.home.render().el);
+				break;
+		}
 		return this;
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
 		// re-render upon model change
 		this.model.bind('change:user', this.render);
-		this.model.bind('change:entity', this.render);
-		this.model.bind('change', function(x, schema){
-			console.log('SCHEMA', x, schema);
+		this.model.bind('change:page', this.render);
+		//this.model.bind('change:entity', this.render);
+		this.model.bind('all', function(){
+			console.log('CHROME', arguments);
 		});
-		// create entity viewer
-		this.view = new EntityView;
-		// create account View
-		//this.account = new AccountView;
+		this.home = new HomeApp;
+		this.account = new AccountApp;
+		this.admin = new AdminApp;
 	}
 });
 
 var Controller = Backbone.Controller.extend({
 	routes: {
 		// url --> handler
-		'contact': 'contactUs'
+		'contact': 'contactUs',
+		'account': 'account'
 	},
 	initialize: function(){
 		// entity viewer
 		this.route(/^admin\/([^/?]+)(?:\?(.*))?$/, 'entity', function(name, query){
+			model.set({page: 'admin'});
 			var entity = model.get('entity');
 			entity.name = name;
 			entity.url = name;
@@ -614,18 +665,18 @@ var Controller = Backbone.Controller.extend({
 				}
 			});
 		});
-		// root
-		this.route(/^$/, 'root', function(){
-			console.log('ROOT');
+		this.route(/^admin$/, 'admin', function(){
+			model.set({page: 'admin'});
 			var entity = model.get('entity');
 			entity.dispose();
 		});
-		// account
-		this.route(/^account$/, 'account', function(){
-			console.log('ACCOUNT');
-			var view = new AccountView;
-			$('#content').html(view.render().el);
+		// root
+		this.route(/^$/, 'root', function(){
+			model.set({page: 'home'});
 		});
+	},
+	account: function(){
+		model.set({page: 'account'});
 	},
 	contactUs: function(){
 		console.log('CONTACTUS');

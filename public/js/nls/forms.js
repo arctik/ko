@@ -20,6 +20,8 @@ root: {
 	"loginPassword": "Password",
 	"loginStaySigned": "Stay signed in",
 
+	"loginInvalid": "Hope you just forgot your credentials... Try once more",
+
 	"accountSettings": "Settings",
 
 	"formSave": "Save",

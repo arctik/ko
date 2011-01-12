@@ -177,6 +177,19 @@ model.User = Model 'User', Store('User'),
 					false
 	profile: (data, session) ->
 		@__proto__.get session.user.id
+	change: (data, session) ->
+		data ?= {}
+		console.log 'CHANGE', data
+		Step @, [
+			() ->
+				@__proto__.get session.user.id
+			(user) ->
+				user.name = data.name if data.name
+				#user.name = data.name if data.name
+				#user = U.extend user, data
+				#console.log 'UPDATED', user
+				@__proto__.save user
+		]
 
 model.Affiliate = Compose.create model.User, {
 	add: (data) ->
@@ -348,6 +361,7 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 		#s = _.keys session.context
 		s = {}
 		for k, v of session.context
+			# TODO: if v is function -> 
 			s[k] =
 				schema: v.schema
 				methods:
@@ -361,6 +375,7 @@ FacetForGuest = Compose.create {foo: 'bar'}, {
 
 FacetForUser = Compose.create FacetForGuest, {
 	profile: model.User.profile.bind model.User
+	change: model.User.change.bind model.User
 	Course: RestrictiveFacet model.Course,
 		schema:
 			properties:

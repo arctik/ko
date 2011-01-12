@@ -2053,7 +2053,7 @@ if (!String.prototype.trim) {
             return str.charAt(0).toUpperCase() + str.substring(1).toLowerCase();
         },
 
-    	  chop: function(str, step){
+        chop: function(str, step){
             step = step || str.length;
             var arr = [];
             for (var i = 0; i < str.length;) {
@@ -2086,12 +2086,12 @@ if (!String.prototype.trim) {
         },
 
         escapeHTML: function(str) {
-            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         },
 
         escapeRegExp: function(str){
             // From MooTools core 1.2.4
-            return str.replace(/([-.*+?^${}()|[\]\/\\])/g, '\\$1');
+            return String(str||'').replace(/([-.*+?^${}()|[\]\/\\])/g, '\\$1');
         },
 
         insert: function(str, i, substr){
