@@ -12,6 +12,7 @@ root: {
 	"prev": "Prev",
 	"next": "Next",
 	"displayingItems": "Displaying items %d to %d",
+	"displayingNone": "Nothing to display",
 
 	"loginLogin": "Login",
 	"loginLogout": "Logout",

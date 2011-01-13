@@ -184,12 +184,12 @@ handlerFactory = (app, before, after) ->
 		wid = process.env._WID_
 
 		# process request
-		Step {foo:'bar'}, [
+		Step {test: 'tobedeleted'}, [
 			() ->
 				# get session
 				app.getSession req, res
 			(session) ->
-				console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params
+				console.log "REQUEST: #{req.method} #{req.url}", req.location, req.params #, session
 				# run REST handler
 				method = req.method
 				path = req.location.pathname
@@ -227,7 +227,7 @@ handlerFactory = (app, before, after) ->
 					# FIXME: move to POST handler?
 					# FIXME: passing context is good?
 					#console.log 'DIRECTCALL', model, this
-					model data, session
+					model data, session, method
 				else if method is 'GET'
 					model.find query
 				else if method is 'PUT'

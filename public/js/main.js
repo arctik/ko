@@ -4,10 +4,10 @@
  * form from schema
  * i18n switch -- reload
  * make chrome model attribute user also model
- * get rid of Entity#selected in favor of View#selected
  * navigation should honor model.schema
  * centralized error showing
- * !!!filters again!!!
+ * 3/5 !!!filters again!!!
+ * 3/5 !!!pager!!!
  */
 
 var model;
@@ -54,7 +54,6 @@ _.mixin({
 
 // extended Collection
 var Entity = Backbone.Collection.extend({
-	selected: [],
 	error: function(xhr){
 		console.log('ERR', arguments, model);
 		var err = xhr.responseText;
@@ -88,9 +87,9 @@ var Entity = Backbone.Collection.extend({
 			error: this.error
 		});
 	},
-	updateSelected: function(props){
+	updateSelected: function(ids, props){
 		var url = this.name + '?in(id,$1)';
-		var data = {queryParameters: [this.selected], data: props};
+		var data = {queryParameters: [ids], data: props};
 		var meta = {
 			url: url,
 			toJSON: function(){return data;}
@@ -104,9 +103,9 @@ var Entity = Backbone.Collection.extend({
 			error: this.error
 		});
 	},
-	destroySelected: function(){
+	destroySelected: function(ids){
 		var url = this.name + '?in(id,$1)';
-		var data = {queryParameters: [this.selected]};
+		var data = {queryParameters: [ids]};
 		var meta = {
 			url: url
 		};
@@ -180,7 +179,7 @@ var HeaderApp = Backbone.View.extend({
 			url: '/login',
 			data: JSON.stringify(data),
 			contentType: 'application/json',
-			success: function(newSession){
+			success: function(){
 				location.href = '/';
 			},
 			error: function(){
@@ -196,7 +195,7 @@ var HeaderApp = Backbone.View.extend({
 			url: '/login',
 			data: JSON.stringify({}),
 			contentType: 'application/json',
-			success: function(newSession){
+			success: function(){
 				location.href = '/';
 			},
 			error: function(){
@@ -265,6 +264,7 @@ var NavApp = Backbone.View.extend({
 
 var AdminApp = Backbone.View.extend({
 	_lastClickedRow: 0,
+	selected: [],
 	render: function(){
 		var entity = model.get('entity');
 		var name = entity.name;
@@ -279,11 +279,13 @@ var AdminApp = Backbone.View.extend({
 		}
 		//console.log('RENDER ENTITY', items);
 
+		this.selected = [];
+
 		// render list
 		$(this.el).html(name ? _.partial([name+'-list', 'list'], {
 			name: name,
 			items: entity,
-			selected: entity.selected,
+			selected: this.selected,
 			query: query,
 			props: props,
 			methods: methods
@@ -320,7 +322,7 @@ var AdminApp = Backbone.View.extend({
 		var methods = entity.methods();
 		var props = schema;
 		if (methods.update || methods.remove || methods.add) {
-			var ids = entity.selected;
+			var ids = this.selected;
 			var m;
 			//console.log('INSPECT', ids);
 			if (ids.length === 1) {
@@ -371,18 +373,18 @@ var AdminApp = Backbone.View.extend({
 	},
 	removeSelected: function(e){
 		var entity = model.get('entity');
-		entity.destroySelected();
+		entity.destroySelected(this.selected);
 		return false;
 	},
 	updateSelectedOrCreate: function(e){
 		var entity = model.get('entity');
-		var ids = entity.selected;
+		var ids = this.selected;
 		var props = $(e.target).serializeObject({filterEmpty: true});
 		console.log('TOSAVE?', ids, props);
 		try {
 			// multi update
 			if (ids.length > 0) {
-				entity.updateSelected(props);
+				entity.updateSelected(ids, props);
 			// create new
 			} else {
 				entity.create(props);
@@ -398,6 +400,8 @@ var AdminApp = Backbone.View.extend({
 		filters.each(function(i, x){
 			var name = $(x).attr('name');
 			var val = $(x).val();
+			// remove all search conditions on 'name'
+			query.search.args = _.reject(query.search.args, function(x){return x.args[0] === name});
 			// TODO: treat val as RQL?!
 			if (val)
 				query.filter(RQL.Query().match(name, val, 'i'));
@@ -413,7 +417,7 @@ var AdminApp = Backbone.View.extend({
 		// get ids from selected containers
 		var ids = []; $(this.el).find('.action-select-row.selected').each(function(i, row){ids.push($(row).attr('rel'))});
 		var entity = model.get('entity');
-		entity.selected = ids;
+		this.selected = ids;
 		//console.log('SELECTED', ids);
 		entity.trigger('selection', ids, entity);
 	},
@@ -510,12 +514,13 @@ var AdminApp = Backbone.View.extend({
 	// handle pagination
 	setPageSize: function(e){
 		this.query.limit[0] = +($(e.target).val());
+		this.query.limit[1] = 0;
 		this.reload();
 		return false;
 	},
 	gotoPage: function(e){
 		var entity = model.get('entity');
-		var items = entity.toJSON();
+		var items = entity;//.toJSON();
 		var query = this.query;
 		var lastSkip = query.limit[1];
 		var delta = query.limit[0]; if (delta === Infinity) delta = 100;
@@ -572,7 +577,7 @@ var ProfileApp = Backbone.View.extend({
 		var user = model.get('user');
 		this.user = new Backbone.Model(user);
 		delete this.user.id;
-		this.user.url = '/change';
+		this.user.url = '/profile';
 		$(this.el).html(_.partial('profile', {
 			user: this.user
 		}));
@@ -612,6 +617,19 @@ var ProfileApp = Backbone.View.extend({
 	changePassword: function(e){
 		var props = $(e.target).serializeObject({filterEmpty: true});
 		console.log('CHPASS', props);
+		$.ajax({
+			type: 'POST',
+			url: '/passwd',
+			data: JSON.stringify(props),
+			contentType: 'application/json',
+			success: function(){
+				console.log('OK');
+			},
+			error: function(){
+				console.log(arguments);
+				alert('Failed');
+			}
+		});
 		return false;
 	}
 });
@@ -675,7 +693,6 @@ var Controller = Backbone.Controller.extend({
 			entity.name = name;
 			entity.url = name;
 			entity.query = RQL.Query(query);
-			entity.selected = [];
 			console.log('ROUTE', arguments, entity);
 			//console.log('QUERY', name, query, entity);
 			entity.fetch({

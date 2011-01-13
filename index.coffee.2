@@ -127,9 +127,16 @@ model.User = Model 'User', Store('User'),
 	update: (query, changes) ->
 		return URIError 'Please be more specific' unless query
 		id = parseQuery(query).normalize().pk
+		return URIError 'Can not set passwords in bulk' if changes.password isnt undefined and not id
 		#return URIError 'Use signup to create new user' unless user.id
-		changes = U.veto ['password', 'salt']
-		# TODO!!!: limit access rights in changes not higher than of current user
+		if changes.password
+			# TODO: password changed, notify the user
+			# TODO: notify only if changed OK!
+			# create salt, hash salty password
+			changes.salt = nonce()
+			console.log 'PASSWORD SET TO', changes.password
+			changes.password = encryptPassword changes.password, changes.salt
+		# TODO: limit access rights in changes not higher than of current user
 		@__proto__.update query, changes
 	login: (data, context) ->
 		#console.log 'LOGIN', arguments
@@ -146,7 +153,7 @@ model.User = Model 'User', Store('User'),
 					# log out
 					#console.log 'LOGOUT'
 					context.save null
-					true
+					user: {}
 			else
 				if not user.password or not user.active
 					# not been activated
@@ -158,29 +165,30 @@ model.User = Model 'User', Store('User'),
 					#console.log 'LOGIN'
 					session =
 						id: nonce()
-						uid: user.id
+						user:
+							id: user.id
+							email: user.email
+							type: user.type
 					session.expires = new Date(15*24*60*60*1000 + (new Date()).valueOf()) if data.remember
 					context.save session
-					session
+					sid: session.id, user: session.user
 				else
 					context.save null
 					false
 	profile: (data, session, method) ->
-		if method is 'GET'
-			return U.veto session.user, ['password', 'salt']
+		user = @__proto__.get session.user.id
+		return user if method is 'GET'
 		data ?= {}
-		console.log 'PROFILECHANGE', data
-		@update "id=#{session.user.id}", data
-	passwd: (data, session, method) ->
-		return TypeError 'Refuse to change the password' unless data.newPassword and data.newPassword is data.confirmPassword and session.user.password is encryptPassword data.oldPassword, session.user.salt
-		# TODO: password changed, notify the user
-		# TODO: notify only if changed OK!
-		# create salt, hash salty password
-		changes = {}
-		changes.salt = nonce()
-		console.log 'PASSWORD SET TO', data.newPassword
-		changes.password = encryptPassword data.newPassword, changes.salt
-		@__proto__.update "id=#{session.user.id}", changes
+		console.log 'CHANGE', data
+		wait @update("id=#{session.user.id}", data), () ->
+			#session.user = ?
+			session.save session
+		#wait user, (user) =>
+		#	user.name = data.name if data.name
+		#	#user.name = data.name if data.name
+		#	#user = U.extend user, data
+		#	#console.log 'UPDATED', user
+		#	@__proto__.put user
 
 model.Affiliate = Compose.create model.User, {
 	add: (data) ->
@@ -233,29 +241,17 @@ model.Admin = Compose.create model.User, {
 		@update q.eq('type', 'admin'), active: false, _deleted: true
 }
 
-model.Role = Model 'Role', Store('Role'), {
-}
-
-model.Group = Model 'Group', Store('Group'), {
-}
-
 model.Session = Model 'Session', Store('Session'),
 	# look for a saved session, attach .save() helper
 	lookup: (req, res) ->
 		sid = req.getSecureCookie 'sid'
-		Step {}, [
+		Step @, [
 			() ->
-				#console.log "GET FOR SID #{sid}"
-				model.Session.get sid
+				@get sid
 			(session) ->
-				#console.log "GOT FOR SID #{sid}", session
-				@session = session or {}
-				model.User.get @session.uid
-			(user) ->
-				#console.log "GOT USER", user
-				@session.user = user or {}
-				#console.log "SESSIN!#{sid}", @session
-				@session.save = (value) ->
+				session ?= user: {}
+				#console.log 'SESSIN!' + sid, session
+				session.save = (value) =>
 					#console.log 'SESSOUT' + sid, value
 					options = path: '/', httpOnly: true
 					if value
@@ -264,19 +260,20 @@ model.Session = Model 'Session', Store('Session'),
 						options.expires = value.expires if value.expires
 						#console.log 'MAKESESS', value
 						# N.B. we don't wait here, so value will be spoiled id -> _id
-						model.Session.add U.clone value
+						@add U.clone value
 						res.setSecureCookie 'sid', sid, options
 					else
 						# remove the session and the cookie
 						#console.log 'REMOVESESS', @
-						model.Session.remove id: sid
+						@remove id: sid
 						res.clearCookie 'sid', options
-				level = getUserLevel @session.user
+				level = getUserLevel session.user
 				#context = facets[level] or {}
 				level = [level] unless level instanceof Array
 				context = Compose.create.apply null, [{}].concat(level.map (x) -> facets[x])
 				#console.log 'EFFECTIVE FACET', level, context
-				Object.freeze Compose.call @session, context: context
+				Object.freeze Compose.call session, context: context
+				#session
 		]
 
 ######################################
@@ -373,13 +370,12 @@ FacetForGuest = Compose.create {}, {
 						update: not not v.update
 						remove: not not v.remove
 		#s = session.context
-		user: U.veto(session.user, ['password', 'salt']), schema: s
+		user: session.user, schema: s
 	login: model.User.login.bind model.User
 }
 
 FacetForUser = Compose.create FacetForGuest, {
 	profile: model.User.profile.bind model.User
-	passwd: model.User.passwd.bind model.User
 	Course: RestrictiveFacet model.Course,
 		schema:
 			properties:
@@ -436,36 +432,6 @@ FacetForRoot = Compose.create FacetForUser, {
 					type: 'string'
 				email:
 					type: 'string'
-	Role: PermissiveFacet model.Role,
-		schema:
-			properties:
-				name:
-					type: 'string'
-				description:
-					type: 'string'
-				rights:
-					type: 'array'
-					items:
-						type: 'object'
-						properties:
-							entity:
-								type: 'string'
-								enum: U.keys model
-							access:
-								type: 'integer'
-								enum: [0, 1, 2, 3]
-	Group: PermissiveFacet model.Group,
-		schema:
-			properties:
-				name:
-					type: 'string'
-				description:
-					type: 'string'
-				roles:
-					type: 'array'
-					items:
-						type: 'string'
-						enum: () -> model.Role.find
 	Language: PermissiveFacet model.Language,
 		schema:
 			properties:
@@ -487,12 +453,11 @@ FacetForMerchant = Compose.create FacetForUser, {
 
 # admin -- powerful user
 FacetForAdmin = Compose.create FacetForUser, {
+	Bar: PermissiveFacet model.Bar, null, 'foos2'
 	Course: FacetForRoot.Course
 	Affiliate: FacetForRoot.Affiliate
 	Merchant: FacetForRoot.Merchant
 	Admin: FacetForRoot.Admin
-	Role: FacetForRoot.Role
-	Group: FacetForRoot.Group
 	Language: FacetForRoot.Language
 }
 

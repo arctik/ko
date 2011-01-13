@@ -10,6 +10,7 @@ define({
 	"prev": "Пред",
 	"next": "След",
 	"displayingItems": "Показаны записи с %d по %d",
+	"displayingNone": "Нет записей для отображения",
 
 	"loginLogin": "Войти",
 	"loginLogout": "Выйти",

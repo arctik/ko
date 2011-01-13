@@ -78,8 +78,8 @@
 		<% if (user.id) { %>
 		<a href="#" class="toggle"><%= user.type %>&nbsp;<%= user.name || user.email || user.id %>&nbsp;&nabla;</a>
 		<div style="display: none;">
-			<p><a href="/#profile"><%=_.T('profileSettings')%></a>
-			<p><a href="/#logout"><%=_.T('loginLogout')%></a>
+			<p><a href="#profile"><%=_.T('profileSettings')%></a>
+			<p><a href="#logout"><%=_.T('loginLogout')%></a>
 		</div>
 		<% } else { %>
 		<div>
@@ -112,7 +112,8 @@
 <script id="tmpl-navigation" type="text/x-jquery-tmpl">
 	<% if (user.id && page === 'admin') { %>
 	<div class="menu grid_12 alpha">
-		<a href="/#admin/Bar">Bar</a>
+		<a href="/#admin/Role">Roles</a>
+		<a href="/#admin/Group">Groups</a>
 		<a href="/#admin/Course">Courses</a>
 		<a href="/#admin/Language">Languages</a>
 		<a href="/#admin/Affiliate">Affiliates</a>
@@ -206,7 +207,7 @@ Cursus est risus hendrerit et <br>
 			<tbody class="action-select-list"><% items.each(function(item){ var id = item.id; %>
 				<tr class="action-select-row<% if (selected.indexOf(id) >= 0) { %> selected<% } %>" rel="<%=id%>">
 					<td class="actions"><% if (methods.update || methods.remove) { %><input type="checkbox" class="action-select" <% if (selected.indexOf(id) >= 0) { %>checked="checked"<% } %> /><% } %></td>
-					<% _.each(props, function(prop, name){ var val = item.escape(name); if (prop.type === 'date') val = (new Date(item.get(name))).toISOString(); %>
+					<% _.each(props, function(prop, name){ var val = item.escape(name); if (prop.type === 'date') val = (new Date(item.get(name))).toLocaleString(); %>
 					<td>
 					<% if (name === 'id') { %>
 						<a class="action-open" rel="<%=id%>" href="#<%=name%>/<%=id%>"><%=val%></a>
@@ -219,10 +220,18 @@ Cursus est risus hendrerit et <br>
 			<% }); %></tbody>
 			<tfoot></tfoot>
 		</table>
+		<% if (items.length) { %>
 		<p><%=_.T('displayingItems', +query.limit[1]+1, +query.limit[1]+items.length)%></p>
+		<% } else { %>
+		<p><%=_.T('displayingNone')%></p>
+		<% } %>
 		<div class="pager">
+			<% if (query.limit[1]) { %>
 			<a href="#" class="page-prev"><%=_.T('prev')%></a>
+			<% } %>
+			<% if (items.length >= query.limit[0]) { %>
 			<a href="#" class="page-next"><%=_.T('next')%></a>
+			<% } %>
 			<select class="action-limit">
 				<option value="<%=query.limit[0]%>"><%=query.limit[0]%></option>
 				<option value="10">10</option>
@@ -262,7 +271,9 @@ Cursus est risus hendrerit et <br>
 
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
 <form style="position: fixed;">
+	<% if (ids.length < 2) { %>
 	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=data.escape('cur')%>" /></label></div>
+	<% } %>
 	<div class="form-field"><label>Курс<input type="text" name="value" value="<%=data.escape('value')%>" /></label></div>
 	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids, methods: methods})%></div>
 </form>
