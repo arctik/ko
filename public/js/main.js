@@ -75,19 +75,6 @@ function RPC(url, data, options){
 
 // extended Collection
 var Entity = Backbone.Collection.extend({
-	error: function(xhr){
-		console.log('ERR', arguments, model);
-		var err = xhr.responseText;
-		try {
-			err = JSON.parse(err);
-			model.set({errors: err});
-			/*_.each(err, function(e){
-				alert(e.property + ': ' + e.message);
-			});*/
-		} catch (x) {
-			alert(err && err.message || err);
-		}
-	},
 	dispose: function(){
 		delete this.name;
 		delete this.url;
@@ -95,42 +82,29 @@ var Entity = Backbone.Collection.extend({
 		this.refresh();
 	},
 	create: function(data, options){
-		var meta = {
-			url: this.name,
-			toJSON: function(){return data;}
-		};
-		Backbone.sync('create', meta, {
-			data: JSON.stringify(data),
+		RPC(this.name, data, {
 			success: function(){
 				console.log('CREATED');
 				Backbone.history.loadUrl();
-			},
-			error: this.error
+			}
 		});
 	},
 	updateSelected: function(ids, props){
 		var url = this.name + '?in(id,$1)';
 		var data = {queryParameters: [ids], data: props};
-		var meta = {
-			url: url,
-			toJSON: function(){return data;}
-		};
-		Backbone.sync('create', meta, {
-			data: JSON.stringify(data),
+		RPC(url, data, {
 			success: function(){
 				console.log('UPDATED');
 				Backbone.history.loadUrl();
-			},
-			error: this.error
+			}
 		});
 	},
 	destroySelected: function(ids){
 		var url = this.name + '?in(id,$1)';
 		var data = {queryParameters: [ids]};
-		var meta = {
+		Backbone.sync('delete', {
 			url: url
-		};
-		Backbone.sync('delete', meta, {
+		}, {
 			data: JSON.stringify(data),
 			success: function(){
 				console.log('REMOVED');
@@ -162,7 +136,7 @@ var ErrorApp = Backbone.View.extend({
 	el: $('#errors'),
 	render: function(){
 		this.el.html(_.partial('errors', {model: model})).show().delay(5000).hide(0, function(){
-			_.each(['flash', 'error', 'errors'], function(x){  
+			_.each(['flash', 'error', 'errors'], function(x){
 				model.unset(x, {silent: true});
 			});
 		});
@@ -288,6 +262,68 @@ var NavApp = Backbone.View.extend({
 	}
 });
 
+var DialogApp = Backbone.View.extend({
+	el: $('#cboxLoadedContent'),
+	render: function(ids){
+		var entity = model.get('entity');
+		var name = entity.name;
+		var schema = entity.schema();
+		var methods = entity.methods();
+		var props = schema;
+		if (methods.update || methods.remove || methods.add) {
+			var m;
+			console.log('INSPECT', this, ids);
+			if (ids.length === 1) {
+				m = entity.get(ids[0]);
+			}
+			if (!m) {
+				m = new Backbone.Model;
+				m.collection = entity;
+			}
+			var html = _.partial([name+'-form', 'form'], {
+				ids: ids,
+				data: m,
+				props: props,
+				methods: methods
+			})
+		}
+		if (html) {
+			$.colorbox({html: html, transition: 'none'});
+		}
+		return this;
+	},
+	events: {
+		'submit form': 'updateSelectedOrCreate',
+		'click .action-remove': 'removeSelected'
+	},
+	initialize: function(){
+		_.bindAll(this, 'render');
+	},
+	removeSelected: function(e){
+		var entity = model.get('entity');
+		entity.destroySelected(this.selected);
+		return false;
+	},
+	updateSelectedOrCreate: function(e){
+		var entity = model.get('entity');
+		var ids = this.selected;
+		var props = $(e.target).serializeObject({filterEmpty: true});
+		console.log('TOSAVE?', ids, props);
+		try {
+			// multi update
+			if (ids.length > 0) {
+				entity.updateSelected(ids, props);
+			// create new
+			} else {
+				entity.create(props);
+			}
+		} catch (x) {
+			console.log('EXC', x, props);
+		}
+		return false;
+	},
+});
+
 var AdminApp = Backbone.View.extend({
 	_lastClickedRow: 0,
 	selected: [],
@@ -296,7 +332,7 @@ var AdminApp = Backbone.View.extend({
 		var name = entity.name;
 		var schema = entity.schema();
 		var methods = entity.methods();
-		console.log('VIEWRENDER', this, name, entity.query+'', schema, methods);
+		//console.log('VIEWRENDER', this, name, entity.query+'', schema, methods);
 		var query = this.query = RQL.Query(entity.query+'').normalize({clear: _.pluck(schema, 'name')});
 		var props = schema;
 		if (query.selectArr.length) {
@@ -341,7 +377,7 @@ var AdminApp = Backbone.View.extend({
 
 		return this;
 	},
-	renderEditor: function(){
+	renderEditor: function(ids){
 		var entity = model.get('entity');
 		var name = entity.name;
 		var schema = entity.schema();
@@ -349,8 +385,9 @@ var AdminApp = Backbone.View.extend({
 		var props = schema;
 		if (methods.update || methods.remove || methods.add) {
 			var ids = this.selected;
+			//ids = ids || this.selected;
 			var m;
-			//console.log('INSPECT', ids);
+			//console.log('INSPECT', this, ids);
 			if (ids.length === 1) {
 				m = entity.get(ids[0]);
 			}
@@ -358,12 +395,14 @@ var AdminApp = Backbone.View.extend({
 				m = new Backbone.Model;
 				m.collection = entity;
 			}
-			this.$('#inspector').html(_.partial([name+'-form', 'form'], {
+			var html = _.partial([name+'-form', 'form'], {
 				ids: ids,
 				data: m,
 				props: props,
 				methods: methods
-			}));
+			})
+			//return html;
+			this.$('#inspector').html(html);
 		}
 		return this;
 	},
@@ -392,9 +431,18 @@ var AdminApp = Backbone.View.extend({
 		entity.bind('all', function(){
 			console.log('ENTITYEVENT', arguments);
 		});
+		//
+		new DialogApp;
 	},
 	open: function(e){
-		var id = [$(e.target).attr('rel')];
+		var id = $(e.target).attr('rel');
+		return false;
+	},
+	open1: function(e){
+		var id = $(e.target).attr('rel');
+		var html = this.renderEditor();//[id]);
+		console.log('OPEN', id, html, this.el);
+		if (html && typeof html == 'string') $.colorbox({html: html, transition: 'none'});
 		return false;
 	},
 	removeSelected: function(e){
