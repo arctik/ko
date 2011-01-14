@@ -55,11 +55,23 @@
 <script id="tmpl-notfound" type="text/x-jquery-tmpl">NO TEMPLATE</script>
 
 <script id="tmpl-errors" type="text/x-jquery-tmpl">
-	<% _.each(errors, function(error){ %>
-	<div class="error">
+	<% if (model.get('flash')) { %>
+	<div class="flash" style="background: #99FF99; border: 1px solid #00CC66">
+		<%=model.escape('flash')%>
+	</div>
+	<% } %>
+	<% if (model.has('error')) { %>
+	<div class="error" style="background: #FF9999; border: 1px solid #CC6666">
+		<%=model.escape('error')%>
+	</div>
+	<% } %>
+	<% if (model.get('errors')) { %>
+	<% _.each(model.get('errors'), function(error){ %>
+	<div class="error" style="background: #FF9999; border: 1px solid #CC6666">
 		<%= error.property %>:<%= error.message %>
 	</div>
 	<% }); %>
+	<% } %>
 </script>
 
 <script id="tmpl-simple-buttons" type="text/x-jquery-tmpl">

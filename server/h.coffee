@@ -123,7 +123,7 @@ global.validate = (instance, schema) -> J._validate instance, schema, coerce: co
 # coercively validate only properties that do exist in instance
 global.validatePart = (instance, schema) -> J._validate instance, schema, existingOnly: true, coerce: coerce
 # deletes properties not defined in the schema
-global.validateFilter = (instance, schema) -> J._validate instance, schema, filter: true
+global.validateFilter = (instance, schema) -> J._validate instance, schema, removeAdditionalProps: true, coerce: coerce
 
 ############
 

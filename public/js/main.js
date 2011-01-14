@@ -52,6 +52,27 @@ _.mixin({
 	}
 });
 
+function RPC(url, data, options){
+	Backbone.sync('create', {
+		url: url,
+		toJSON: function(){return data;}
+	}, {
+		success: options.success || function(){
+			model.set({flash: _.T('OK')});
+		},
+		error: function(xhr){
+			console.log('ERR', arguments, model);
+			var err = xhr.responseText;
+			try {
+				err = JSON.parse(err);
+			} catch (x) {
+				if (err && err.message) err = err.message;
+			}
+			options.error && options.error(err) || model.set(_.isArray(err) ? {errors: err} : {error: err});
+		}
+	});
+}
+
 // extended Collection
 var Entity = Backbone.Collection.extend({
 	error: function(xhr){
@@ -140,14 +161,19 @@ require.ready(function(){ //
 var ErrorApp = Backbone.View.extend({
 	el: $('#errors'),
 	render: function(){
-		console.log('SHOWERRS', model.toJSON());
-		this.el.html(_.partial('errors', model.toJSON()));
+		this.el.html(_.partial('errors', {model: model})).show().delay(5000).hide(0, function(){
+			_.each(['flash', 'error', 'errors'], function(x){  
+				model.unset(x, {silent: true});
+			});
+		});
 		return this;
 	},
 	events: {
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
+		model.bind('change:flash', this.render);
+		model.bind('change:error', this.render);
 		model.bind('change:errors', this.render);
 	}
 });
@@ -585,51 +611,37 @@ var ProfileApp = Backbone.View.extend({
 		return this;
 	},
 	events: {
-		'submit #action-profile-change-name': 'changeName',
-		'submit #action-profile-change-email': 'changeEmail',
+		'submit #action-profile-change-name': 'changeProfile',
+		'submit #action-profile-change-email': 'changeProfile',
 		'submit #action-profile-change-password': 'changePassword'
 	},
 	initialize: function(){
 		_.bindAll(this, 'render');
 		model.bind('change:user', this.render);
 	},
-	changeName: function(e){
+	changeProfile: function(e){
 		var props = $(e.target).serializeObject({filterEmpty: true});
-		console.log('CHNAME', props, this.user.toJSON());
-		try {
-			this.user.save(props, {
-				success: function(data){
+		if (_.size(props) > 0) {
+			RPC('/profile', props, {
+				success1: function(){
 					location.reload();
-					//console.log('CHNAME!', data);
-					//model.set({user: data});
 				}
 			});
-		} catch (x) {
-			console.log('EXCCC', x);
 		}
-		return false;
-	},
-	changeEmail: function(e){
-		var props = $(e.target).serializeObject({filterEmpty: true});
-		console.log('CHMAIL', props);
 		return false;
 	},
 	changePassword: function(e){
 		var props = $(e.target).serializeObject({filterEmpty: true});
-		console.log('CHPASS', props);
-		$.ajax({
-			type: 'POST',
-			url: '/passwd',
-			data: JSON.stringify(props),
-			contentType: 'application/json',
-			success: function(){
-				console.log('OK');
-			},
-			error: function(){
-				console.log(arguments);
-				alert('Failed');
-			}
-		});
+		if (_.size(props) > 0) {
+			RPC('/passwd', props, {
+				success: function(){
+					model.set({flash: _.T('Password set OK')})
+				},
+				error: function(){
+					model.set({error: _.T('Password NOT set')})
+				}
+			});
+		}
 		return false;
 	}
 });

@@ -39,6 +39,7 @@ Facet = (model, options, expose) ->
 		# .update() honors schema, if any
 		else if name is 'update' and options.schema
 			fn = (query, changes) ->
+				console.log 'VALIDATE?', changes, options.schema
 				validation = validatePart changes or {}, options.schema
 				if not validation.valid
 					return SyntaxError JSON.stringify validation.errors
@@ -128,7 +129,7 @@ model.User = Model 'User', Store('User'),
 		return URIError 'Please be more specific' unless query
 		id = parseQuery(query).normalize().pk
 		#return URIError 'Use signup to create new user' unless user.id
-		changes = U.veto ['password', 'salt']
+		changes = U.veto changes, ['password', 'salt']
 		# TODO!!!: limit access rights in changes not higher than of current user
 		@__proto__.update query, changes
 	login: (data, context) ->
@@ -165,12 +166,26 @@ model.User = Model 'User', Store('User'),
 				else
 					context.save null
 					false
-	profile: (data, session, method) ->
+	profile: (changes, session, method) ->
 		if method is 'GET'
 			return U.veto session.user, ['password', 'salt']
 		data ?= {}
-		console.log 'PROFILECHANGE', data
-		@update "id=#{session.user.id}", data
+		console.log 'PROFILECHANGE', changes
+		# N.B. have to manually validate here
+		# FIXME: BADBADBAD to double schema here 
+		validation = validatePart changes or {},
+			properties:
+				id:
+					type: 'string'
+					pattern: '[a-zA-Z0-9_]+'
+				name:
+					type: 'string'
+				email:
+					type: 'string'
+					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
+		if not validation.valid
+			return SyntaxError JSON.stringify validation.errors
+		@update "id=#{session.user.id}", changes
 	passwd: (data, session, method) ->
 		return TypeError 'Refuse to change the password' unless data.newPassword and data.newPassword is data.confirmPassword and session.user.password is encryptPassword data.oldPassword, session.user.salt
 		# TODO: password changed, notify the user
@@ -416,6 +431,7 @@ FacetForRoot = Compose.create FacetForUser, {
 					type: 'string'
 				email:
 					type: 'string'
+					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
 	Merchant: PermissiveFacet model.Merchant,
 		schema:
 			properties:
@@ -426,6 +442,7 @@ FacetForRoot = Compose.create FacetForUser, {
 					type: 'string'
 				email:
 					type: 'string'
+					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
 	Admin: PermissiveFacet model.Admin,
 		schema:
 			properties:
@@ -436,6 +453,7 @@ FacetForRoot = Compose.create FacetForUser, {
 					type: 'string'
 				email:
 					type: 'string'
+					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
 	Role: PermissiveFacet model.Role,
 		schema:
 			properties:
