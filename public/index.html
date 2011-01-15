@@ -191,7 +191,7 @@ Cursus est risus hendrerit et <br>
 
 <script id="tmpl-list" type="text/x-jquery-tmpl">
 	<div class="list-actions grid_3 alpha"><%=_.partial([name+'-actions', 'actions'],{data:{}})||'&nbsp;'%></div>
-	<div class="list grid_10">
+	<div class="list grid_13 omega">
 		<% if (methods.update || methods.remove) { %>
 		<select class="actions">
 			<option></option>
@@ -199,6 +199,7 @@ Cursus est risus hendrerit et <br>
 			<option value="none"><%=_.T('none')%></option>
 			<option value="toggle"><%=_.T('toggle')%></option>
 		</select>
+		<div id="inspector" class="list-item-inspector"></div>
 		<% } %>
 		<table id="list-<%=name%>">
 			<thead>
@@ -253,7 +254,6 @@ Cursus est risus hendrerit et <br>
 			</select>
 		</div>
 	</div>
-	<div id="inspector" class="list-item-inspector grid_3 omega"></div>
 </script>
 
 <script id="tmpl-form-buttons" type="text/x-jquery-tmpl">
@@ -283,7 +283,7 @@ Cursus est risus hendrerit et <br>
 </script>
 
 <script id="tmpl-Course-form" type="text/x-jquery-tmpl">
-<form style="position: fixed;">
+<form style="position1: fixed;">
 	<% if (ids.length < 2) { %>
 	<div class="form-field"><label>Валюта<input type="text" name="cur" value="<%=data.escape('cur')%>" /></label></div>
 	<% } %>
@@ -310,7 +310,7 @@ Cursus est risus hendrerit et <br>
 </script>
 
 <script id="tmpl-Affiliate-form" type="text/x-jquery-tmpl">
-<form>
+<form class="clearfix">
 	<% if (!ids.length) { %>
 	<div class="form-field"><label>ID<input type="text" name="id" /></label></div>
 	<% } %>
@@ -321,6 +321,7 @@ Cursus est risus hendrerit et <br>
 	<% } %>
 	<div class="form-field"><label>В строю?<select name="active"><option value="">---</option><option value="true"<% if (data.active) { %> selected="selected"<% } %>>Да</option><option value="false"<% if (data.active === false) { %> selected="selected"<% } %>>Нет</option></select></label></div>
 	<div class="buttons"><%=_.partial(['form-buttons'],{data:data, ids: ids, methods: methods})%></div>
+	<div>
 </form>
 </script>
 

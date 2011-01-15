@@ -34,6 +34,7 @@ miksago/node-websocket-server/lib:ws-server
 learnboost/socket.io-node:io
 Marak/Faker.js:faker
 jackmoore/colorbox:colorbox
+cs278/jquery.tokeninput:tokeninput
 '
 
 #deps=dvv/rql/lib:rql

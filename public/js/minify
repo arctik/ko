@@ -7,12 +7,14 @@ cat \
 	../../lib/node/underscore.string.js \
 	../../lib/node/jquery.tmpl.js \
 	../../lib/node/backbone.js \
-	../../git/colorbox/colorbox/jquery.colorbox.js \
+	jquery.simplemodal-1.4.1.js \
 	jquery.textchange.min.js \
+	../../git/jquery.tokeninput/src/jquery.tokeninput.js \
 	formdeserialize.js \
 	\
  > bundle.js
 #| build/jsmin > bundle.js
+#	../../git/colorbox/colorbox/jquery.colorbox.js
 
 exit 0
 

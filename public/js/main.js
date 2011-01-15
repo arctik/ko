@@ -371,9 +371,16 @@ var AdminApp = Backbone.View.extend({
 			var name = $this.attr('name');
 			timeout = setTimeout(function(){
 				self.reload();
-			}, 1000);
+			}, 500);
 			return false;
 		});
+
+		/*this.$('.filter').each(function(i, x){
+			$(x).tokenInput(function(query){
+				return '/'+name + '?' + RQL.Query().match($(x).attr('name'), query, 'i');
+			}, {
+			});
+		});*/
 
 		return this;
 	},
@@ -416,6 +423,7 @@ var AdminApp = Backbone.View.extend({
 		'change .action-limit': 'setPageSize',
 		'click .pager a': 'gotoPage',
 		'click .action-open': 'open',
+		'dblclick .action-select-row': 'open',
 		'submit form': 'updateSelectedOrCreate',
 		'click .action-remove': 'removeSelected'
 	},
@@ -436,6 +444,7 @@ var AdminApp = Backbone.View.extend({
 	},
 	open: function(e){
 		var id = $(e.target).attr('rel');
+		$.modal(this.$('#inspector').html());
 		return false;
 	},
 	open1: function(e){

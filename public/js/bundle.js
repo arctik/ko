@@ -3788,794 +3788,705 @@ if (!String.prototype.trim) {
   };
 
 }).call(this);
-// ColorBox v1.3.15 - a full featured, light-weight, customizable lightbox based on jQuery 1.3+
-// Copyright (c) 2010 Jack Moore - jack@colorpowered.com
-// Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
-(function ($, window) {
-	
-	var
-	// ColorBox Default Settings.	
-	// See http://colorpowered.com/colorbox for details.
-	defaults = {
-		transition: "elastic",
-		speed: 300,
-		width: false,
-		initialWidth: "600",
-		innerWidth: false,
-		maxWidth: false,
-		height: false,
-		initialHeight: "450",
-		innerHeight: false,
-		maxHeight: false,
-		scalePhotos: true,
-		scrolling: true,
-		inline: false,
-		html: false,
-		iframe: false,
-		photo: false,
-		href: false,
-		title: false,
-		rel: false,
-		opacity: 0.9,
-		preloading: true,
-		current: "image {current} of {total}",
-		previous: "previous",
-		next: "next",
-		close: "close",
-		open: false,
-		returnFocus: true,
-		loop: true,
-		slideshow: false,
-		slideshowAuto: true,
-		slideshowSpeed: 2500,
-		slideshowStart: "start slideshow",
-		slideshowStop: "stop slideshow",
-		onOpen: false,
-		onLoad: false,
-		onComplete: false,
-		onCleanup: false,
-		onClosed: false,
-		overlayClose: true,		
-		escKey: true,
-		arrowKey: true
-	},
-	
-	// Abstracting the HTML and event identifiers for easy rebranding
-	colorbox = 'colorbox',
-	prefix = 'cbox',
-	
-	// Events	
-	event_open = prefix + '_open',
-	event_load = prefix + '_load',
-	event_complete = prefix + '_complete',
-	event_cleanup = prefix + '_cleanup',
-	event_closed = prefix + '_closed',
-	event_purge = prefix + '_purge',
-	event_loaded = prefix + '_loaded',
-	
-	// Special Handling for IE
-	isIE = $.browser.msie && !$.support.opacity, // feature detection alone gave a false positive on at least one phone browser and on some development versions of Chrome.
-	isIE6 = isIE && $.browser.version < 7,
-	event_ie6 = prefix + '_IE6',
+/*
+ * SimpleModal 1.4.1 - jQuery Plugin
+ * http://www.ericmmartin.com/projects/simplemodal/
+ * Copyright (c) 2010 Eric Martin (http://twitter.com/ericmmartin)
+ * Dual licensed under the MIT and GPL licenses
+ * Revision: $Id: jquery.simplemodal.js 261 2010-11-05 21:16:20Z emartin24 $
+ */
 
-	// Cached jQuery Object Variables
-	$overlay,
-	$box,
-	$wrap,
-	$content,
-	$topBorder,
-	$leftBorder,
-	$rightBorder,
-	$bottomBorder,
-	$related,
-	$window,
-	$loaded,
-	$loadingBay,
-	$loadingOverlay,
-	$title,
-	$current,
-	$slideshow,
-	$next,
-	$prev,
-	$close,
+/**
+ * SimpleModal is a lightweight jQuery plugin that provides a simple
+ * interface to create a modal dialog.
+ *
+ * The goal of SimpleModal is to provide developers with a cross-browser
+ * overlay and container that will be populated with data provided to
+ * SimpleModal.
+ *
+ * There are two ways to call SimpleModal:
+ * 1) As a chained function on a jQuery object, like $('#myDiv').modal();.
+ * This call would place the DOM object, #myDiv, inside a modal dialog.
+ * Chaining requires a jQuery object. An optional options object can be
+ * passed as a parameter.
+ *
+ * @example $('<div>my data</div>').modal({options});
+ * @example $('#myDiv').modal({options});
+ * @example jQueryObject.modal({options});
+ *
+ * 2) As a stand-alone function, like $.modal(data). The data parameter
+ * is required and an optional options object can be passed as a second
+ * parameter. This method provides more flexibility in the types of data
+ * that are allowed. The data could be a DOM object, a jQuery object, HTML
+ * or a string.
+ *
+ * @example $.modal('<div>my data</div>', {options});
+ * @example $.modal('my data', {options});
+ * @example $.modal($('#myDiv'), {options});
+ * @example $.modal(jQueryObject, {options});
+ * @example $.modal(document.getElementById('myDiv'), {options});
+ *
+ * A SimpleModal call can contain multiple elements, but only one modal
+ * dialog can be created at a time. Which means that all of the matched
+ * elements will be displayed within the modal container.
+ *
+ * SimpleModal internally sets the CSS needed to display the modal dialog
+ * properly in all browsers, yet provides the developer with the flexibility
+ * to easily control the look and feel. The styling for SimpleModal can be
+ * done through external stylesheets, or through SimpleModal, using the
+ * overlayCss, containerCss, and dataCss options.
+ *
+ * SimpleModal has been tested in the following browsers:
+ * - IE 6, 7, 8, 9
+ * - Firefox 2, 3, 4
+ * - Opera 9, 10
+ * - Safari 3, 4, 5
+ * - Chrome 1, 2, 3, 4, 5, 6
+ *
+ * @name SimpleModal
+ * @type jQuery
+ * @requires jQuery v1.2.4
+ * @cat Plugins/Windows and Overlays
+ * @author Eric Martin (http://ericmmartin.com)
+ * @version 1.4.1
+ */
+;(function ($) {
+	var ie6 = $.browser.msie && parseInt($.browser.version) === 6 && typeof window['XMLHttpRequest'] !== 'object',
+		ie7 = $.browser.msie && parseInt($.browser.version) === 7,
+		ieQuirks = null,
+		w = [];
 
-	// Variables for cached values or use across multiple functions
-	interfaceHeight,
-	interfaceWidth,
-	loadedHeight,
-	loadedWidth,
-	element,
-	index,
-	settings,
-	open,
-	active,
-	closing = false,
-	
-	publicMethod,
-	boxElement = prefix + 'Element';
-	
-	// ****************
-	// HELPER FUNCTIONS
-	// ****************
+	/*
+	 * Create and display a modal dialog.
+	 *
+	 * @param {string, object} data A string, jQuery object or DOM object
+	 * @param {object} [options] An optional object containing options overrides
+	 */
+	$.modal = function (data, options) {
+		return $.modal.impl.init(data, options);
+	};
 
-	// jQuery object generator to reduce code size
-	function $div(id, css) { 
-		id = id ? ' id="' + prefix + id + '"' : '';
-		css = css ? ' style="' + css + '"' : '';
-		return $('<div' + id + css + '/>');
-	}
+	/*
+	 * Close the modal dialog.
+	 */
+	$.modal.close = function () {
+		$.modal.impl.close();
+	};
 
-	// Convert % values to pixels
-	function setSize(size, dimension) {
-		dimension = dimension === 'x' ? $window.width() : $window.height();
-		return (typeof size === 'string') ? Math.round((/%/.test(size) ? (dimension / 100) * parseInt(size, 10) : parseInt(size, 10))) : size;
-	}
-	
-	// Checks an href to see if it is a photo.
-	// There is a force photo option (photo: true) for hrefs that cannot be matched by this regex.
-	function isImage(url) {
-		return settings.photo || /\.(gif|png|jpg|jpeg|bmp)(?:\?([^#]*))?(?:#(\.*))?$/i.test(url);
-	}
-	
-	// Assigns function results to their respective settings.  This allows functions to be used as values.
-	function process(settings) {
-		for (var i in settings) {
-			if ($.isFunction(settings[i]) && i.substring(0, 2) !== 'on') { // checks to make sure the function isn't one of the callbacks, they will be handled at the appropriate time.
-			    settings[i] = settings[i].call(element);
+	/*
+	 * Set focus on first or last visible input in the modal dialog. To focus on the last
+	 * element, call $.modal.focus('last'). If no input elements are found, focus is placed
+	 * on the data wrapper element.
+	 */
+	$.modal.focus = function (pos) {
+		$.modal.impl.focus(pos);
+	};
+
+	/*
+	 * Determine and set the dimensions of the modal dialog container.
+	 * setPosition() is called if the autoPosition option is true.
+	 */
+	$.modal.setContainerDimensions = function () {
+		$.modal.impl.setContainerDimensions();
+	};
+
+	/*
+	 * Re-position the modal dialog.
+	 */
+	$.modal.setPosition = function () {
+		$.modal.impl.setPosition();
+	};
+
+	/*
+	 * Update the modal dialog. If new dimensions are passed, they will be used to determine
+	 * the dimensions of the container.
+	 *
+	 * setContainerDimensions() is called, which in turn calls setPosition(), if enabled.
+	 * Lastly, focus() is called is the focus option is true.
+	 */
+	$.modal.update = function (height, width) {
+		$.modal.impl.update(height, width);
+	};
+
+	/*
+	 * Chained function to create a modal dialog.
+	 *
+	 * @param {object} [options] An optional object containing options overrides
+	 */
+	$.fn.modal = function (options) {
+		return $.modal.impl.init(this, options);
+	};
+
+	/*
+	 * SimpleModal default options
+	 *
+	 * appendTo:		(String:'body') The jQuery selector to append the elements to. For .NET, use 'form'.
+	 * focus:			(Boolean:true) Focus in the first visible, enabled element?
+	 * opacity:			(Number:50) The opacity value for the overlay div, from 0 - 100
+	 * overlayId:		(String:'simplemodal-overlay') The DOM element id for the overlay div
+	 * overlayCss:		(Object:{}) The CSS styling for the overlay div
+	 * containerId:		(String:'simplemodal-container') The DOM element id for the container div
+	 * containerCss:	(Object:{}) The CSS styling for the container div
+	 * dataId:			(String:'simplemodal-data') The DOM element id for the data div
+	 * dataCss:			(Object:{}) The CSS styling for the data div
+	 * minHeight:		(Number:null) The minimum height for the container
+	 * minWidth:		(Number:null) The minimum width for the container
+	 * maxHeight:		(Number:null) The maximum height for the container. If not specified, the window height is used.
+	 * maxWidth:		(Number:null) The maximum width for the container. If not specified, the window width is used.
+	 * autoResize:		(Boolean:false) Automatically resize the container if it exceeds the browser window dimensions?
+	 * autoPosition:	(Boolean:true) Automatically position the container upon creation and on window resize?
+	 * zIndex:			(Number: 1000) Starting z-index value
+	 * close:			(Boolean:true) If true, closeHTML, escClose and overClose will be used if set.
+	 							If false, none of them will be used.
+	 * closeHTML:		(String:'<a class="modalCloseImg" title="Close"></a>') The HTML for the default close link.
+								SimpleModal will automatically add the closeClass to this element.
+	 * closeClass:		(String:'simplemodal-close') The CSS class used to bind to the close event
+	 * escClose:		(Boolean:true) Allow Esc keypress to close the dialog?
+	 * overlayClose:	(Boolean:false) Allow click on overlay to close the dialog?
+	 * position:		(Array:null) Position of container [top, left]. Can be number of pixels or percentage
+	 * persist:			(Boolean:false) Persist the data across modal calls? Only used for existing
+								DOM elements. If true, the data will be maintained across modal calls, if false,
+								the data will be reverted to its original state.
+	 * modal:			(Boolean:true) User will be unable to interact with the page below the modal or tab away from the dialog.
+								If false, the overlay, iframe, and certain events will be disabled allowing the user to interact
+								with the page below the dialog.
+	 * onOpen:			(Function:null) The callback function used in place of SimpleModal's open
+	 * onShow:			(Function:null) The callback function used after the modal dialog has opened
+	 * onClose:			(Function:null) The callback function used in place of SimpleModal's close
+	 */
+	$.modal.defaults = {
+		appendTo: 'body',
+		focus: true,
+		opacity: 50,
+		overlayId: 'simplemodal-overlay',
+		overlayCss: {},
+		containerId: 'simplemodal-container',
+		containerCss: {},
+		dataId: 'simplemodal-data',
+		dataCss: {},
+		minHeight: null,
+		minWidth: null,
+		maxHeight: null,
+		maxWidth: null,
+		autoResize: false,
+		autoPosition: true,
+		zIndex: 1000,
+		close: true,
+		closeHTML: '<a class="modalCloseImg" title="Close"></a>',
+		closeClass: 'simplemodal-close',
+		escClose: true,
+		overlayClose: false,
+		position: null,
+		persist: false,
+		modal: true,
+		onOpen: null,
+		onShow: null,
+		onClose: null
+	};
+
+	/*
+	 * Main modal object
+	 * o = options
+	 */
+	$.modal.impl = {
+		/*
+		 * Contains the modal dialog elements and is the object passed
+		 * back to the callback (onOpen, onShow, onClose) functions
+		 */
+		d: {},
+		/*
+		 * Initialize the modal dialog
+		 */
+		init: function (data, options) {
+			var s = this;
+
+			// don't allow multiple calls
+			if (s.d.data) {
+				return false;
 			}
-		}
-		settings.rel = settings.rel || element.rel || 'nofollow';
-		settings.href = settings.href || $(element).attr('href');
-		settings.title = settings.title || element.title;
-		return settings;
-	}
 
-	function trigger(event, callback) {
-		if (callback) {
-			callback.call(element);
-		}
-		$.event.trigger(event);
-	}
+			// $.boxModel is undefined if checked earlier
+			ieQuirks = $.browser.msie && !$.boxModel;
 
-	// Slideshow functionality
-	function slideshow() {
-		var
-		timeOut,
-		className = prefix + "Slideshow_",
-		click = "click." + prefix,
-		start,
-		stop,
-		clear;
-		
-		if (settings.slideshow && $related[1]) {
-			start = function () {
-				$slideshow
-					.text(settings.slideshowStop)
-					.unbind(click)
-					.bind(event_complete, function () {
-						if (index < $related.length - 1 || settings.loop) {
-							timeOut = setTimeout(publicMethod.next, settings.slideshowSpeed);
-						}
-					})
-					.bind(event_load, function () {
-						clearTimeout(timeOut);
-					})
-					.one(click + ' ' + event_cleanup, stop);
-				$box.removeClass(className + "off").addClass(className + "on");
-				timeOut = setTimeout(publicMethod.next, settings.slideshowSpeed);
-			};
-			
-			stop = function () {
-				clearTimeout(timeOut);
-				$slideshow
-					.text(settings.slideshowStart)
-					.unbind([event_complete, event_load, event_cleanup, click].join(' '))
-					.one(click, start);
-				$box.removeClass(className + "on").addClass(className + "off");
-			};
-			
-			if (settings.slideshowAuto) {
-				start();
-			} else {
-				stop();
-			}
-		}
-	}
+			// merge defaults and user options
+			s.o = $.extend({}, $.modal.defaults, options);
 
-	function launch(elem) {
-		if (!closing) {
-			
-			element = elem;
-			
-			settings = process($.extend({}, $.data(element, colorbox)));
-			
-			$related = $(element);
-			
-			index = 0;
-			
-			if (settings.rel !== 'nofollow') {
-				$related = $('.' + boxElement).filter(function () {
-					var relRelated = $.data(this, colorbox).rel || this.rel;
-					return (relRelated === settings.rel);
-				});
-				index = $related.index(element);
-				
-				// Check direct calls to ColorBox.
-				if (index === -1) {
-					$related = $related.add(element);
-					index = $related.length - 1;
+			// keep track of z-index
+			s.zIndex = s.o.zIndex;
+
+			// set the onClose callback flag
+			s.occb = false;
+
+			// determine how to handle the data based on its type
+			if (typeof data === 'object') {
+				// convert DOM object to a jQuery object
+				data = data instanceof jQuery ? data : $(data);
+				s.d.placeholder = false;
+
+				// if the object came from the DOM, keep track of its parent
+				if (data.parent().parent().size() > 0) {
+					data.before($('<span></span>')
+						.attr('id', 'simplemodal-placeholder')
+						.css({display: 'none'}));
+
+					s.d.placeholder = true;
+					s.display = data.css('display');
+
+					// persist changes? if not, make a clone of the element
+					if (!s.o.persist) {
+						s.d.orig = data.clone(true);
+					}
 				}
 			}
-			
-			if (!open) {
-				open = active = true; // Prevents the page-change action from queuing up if the visitor holds down the left or right keys.
-				
-				$box.show();
-				
-				if (settings.returnFocus) {
-					try {
-						element.blur();
-						$(element).one(event_closed, function () {
-							try {
-								this.focus();
-							} catch (e) {
-								// do nothing
+			else if (typeof data === 'string' || typeof data === 'number') {
+				// just insert the data as innerHTML
+				data = $('<div></div>').html(data);
+			}
+			else {
+				// unsupported data type!
+				alert('SimpleModal Error: Unsupported data type: ' + typeof data);
+				return s;
+			}
+
+			// create the modal overlay, container and, if necessary, iframe
+			s.create(data);
+			data = null;
+
+			// display the modal dialog
+			s.open();
+
+			// useful for adding events/manipulating data in the modal dialog
+			if ($.isFunction(s.o.onShow)) {
+				s.o.onShow.apply(s, [s.d]);
+			}
+
+			// don't break the chain =)
+			return s;
+		},
+		/*
+		 * Create and add the modal overlay and container to the page
+		 */
+		create: function (data) {
+			var s = this;
+
+			// get the window properties
+			w = s.getDimensions();
+
+			// add an iframe to prevent select options from bleeding through
+			if (s.o.modal && ie6) {
+				s.d.iframe = $('<iframe src="javascript:false;"></iframe>')
+					.css($.extend(s.o.iframeCss, {
+						display: 'none',
+						opacity: 0,
+						position: 'fixed',
+						height: w[0],
+						width: w[1],
+						zIndex: s.o.zIndex,
+						top: 0,
+						left: 0
+					}))
+					.appendTo(s.o.appendTo);
+			}
+
+			// create the overlay
+			s.d.overlay = $('<div></div>')
+				.attr('id', s.o.overlayId)
+				.addClass('simplemodal-overlay')
+				.css($.extend(s.o.overlayCss, {
+					display: 'none',
+					opacity: s.o.opacity / 100,
+					height: s.o.modal ? w[0] : 0,
+					width: s.o.modal ? w[1] : 0,
+					position: 'fixed',
+					left: 0,
+					top: 0,
+					zIndex: s.o.zIndex + 1
+				}))
+				.appendTo(s.o.appendTo);
+
+			// create the container
+			s.d.container = $('<div></div>')
+				.attr('id', s.o.containerId)
+				.addClass('simplemodal-container')
+				.css($.extend(s.o.containerCss, {
+					display: 'none',
+					position: 'fixed',
+					zIndex: s.o.zIndex + 2
+				}))
+				.append(s.o.close && s.o.closeHTML
+					? $(s.o.closeHTML).addClass(s.o.closeClass)
+					: '')
+				.appendTo(s.o.appendTo);
+
+			s.d.wrap = $('<div></div>')
+				.attr('tabIndex', -1)
+				.addClass('simplemodal-wrap')
+				.css({height: '100%', outline: 0, width: '100%'})
+				.appendTo(s.d.container);
+
+			// add styling and attributes to the data
+			// append to body to get correct dimensions, then move to wrap
+			s.d.data = data
+				.attr('id', data.attr('id') || s.o.dataId)
+				.addClass('simplemodal-data')
+				.css($.extend(s.o.dataCss, {
+						display: 'none'
+				}))
+				.appendTo('body');
+			data = null;
+
+			s.setContainerDimensions();
+			s.d.data.appendTo(s.d.wrap);
+
+			// fix issues with IE
+			if (ie6 || ieQuirks) {
+				s.fixIE();
+			}
+		},
+		/*
+		 * Bind events
+		 */
+		bindEvents: function () {
+			var s = this;
+
+			// bind the close event to any element with the closeClass class
+			$('.' + s.o.closeClass).bind('click.simplemodal', function (e) {
+				e.preventDefault();
+				s.close();
+			});
+
+			// bind the overlay click to the close function, if enabled
+			if (s.o.modal && s.o.close && s.o.overlayClose) {
+				s.d.overlay.bind('click.simplemodal', function (e) {
+					e.preventDefault();
+					s.close();
+				});
+			}
+
+			// bind keydown events
+			$(document).bind('keydown.simplemodal', function (e) {
+				if (s.o.modal && e.keyCode === 9) { // TAB
+					s.watchTab(e);
+				}
+				else if ((s.o.close && s.o.escClose) && e.keyCode === 27) { // ESC
+					e.preventDefault();
+					s.close();
+				}
+			});
+
+			// update window size
+			$(window).bind('resize.simplemodal', function () {
+				// redetermine the window width/height
+				w = s.getDimensions();
+
+				// reposition the dialog
+				s.o.autoResize ? s.setContainerDimensions() : s.o.autoPosition && s.setPosition();
+
+				if (ie6 || ieQuirks) {
+					s.fixIE();
+				}
+				else if (s.o.modal) {
+					// update the iframe & overlay
+					s.d.iframe && s.d.iframe.css({height: w[0], width: w[1]});
+					s.d.overlay.css({height: w[0], width: w[1]});
+				}
+			});
+		},
+		/*
+		 * Unbind events
+		 */
+		unbindEvents: function () {
+			$('.' + this.o.closeClass).unbind('click.simplemodal');
+			$(document).unbind('keydown.simplemodal');
+			$(window).unbind('resize.simplemodal');
+			this.d.overlay.unbind('click.simplemodal');
+		},
+		/*
+		 * Fix issues in IE6 and IE7 in quirks mode
+		 */
+		fixIE: function () {
+			var s = this, p = s.o.position;
+
+			// simulate fixed position - adapted from BlockUI
+			$.each([s.d.iframe || null, !s.o.modal ? null : s.d.overlay, s.d.container], function (i, el) {
+				if (el) {
+					var bch = 'document.body.clientHeight', bcw = 'document.body.clientWidth',
+						bsh = 'document.body.scrollHeight', bsl = 'document.body.scrollLeft',
+						bst = 'document.body.scrollTop', bsw = 'document.body.scrollWidth',
+						ch = 'document.documentElement.clientHeight', cw = 'document.documentElement.clientWidth',
+						sl = 'document.documentElement.scrollLeft', st = 'document.documentElement.scrollTop',
+						s = el[0].style;
+
+					s.position = 'absolute';
+					if (i < 2) {
+						s.removeExpression('height');
+						s.removeExpression('width');
+						s.setExpression('height','' + bsh + ' > ' + bch + ' ? ' + bsh + ' : ' + bch + ' + "px"');
+						s.setExpression('width','' + bsw + ' > ' + bcw + ' ? ' + bsw + ' : ' + bcw + ' + "px"');
+					}
+					else {
+						var te, le;
+						if (p && p.constructor === Array) {
+							var top = p[0]
+								? typeof p[0] === 'number' ? p[0].toString() : p[0].replace(/px/, '')
+								: el.css('top').replace(/px/, '');
+							te = top.indexOf('%') === -1
+								? top + ' + (t = ' + st + ' ? ' + st + ' : ' + bst + ') + "px"'
+								: parseInt(top.replace(/%/, '')) + ' * ((' + ch + ' || ' + bch + ') / 100) + (t = ' + st + ' ? ' + st + ' : ' + bst + ') + "px"';
+
+							if (p[1]) {
+								var left = typeof p[1] === 'number' ? p[1].toString() : p[1].replace(/px/, '');
+								le = left.indexOf('%') === -1
+									? left + ' + (t = ' + sl + ' ? ' + sl + ' : ' + bsl + ') + "px"'
+									: parseInt(left.replace(/%/, '')) + ' * ((' + cw + ' || ' + bcw + ') / 100) + (t = ' + sl + ' ? ' + sl + ' : ' + bsl + ') + "px"';
 							}
-						});
-					} catch (e) {
-						// do nothing
-					}
-				}
-				
-				// +settings.opacity avoids a problem in IE when using non-zero-prefixed-string-values, like '.5'
-				$overlay.css({"opacity": +settings.opacity, "cursor": settings.overlayClose ? "pointer" : "auto"}).show();
-				
-				// Opens inital empty ColorBox prior to content being loaded.
-				settings.w = setSize(settings.initialWidth, 'x');
-				settings.h = setSize(settings.initialHeight, 'y');
-				publicMethod.position(0);
-				
-				if (isIE6) {
-					$window.bind('resize.' + event_ie6 + ' scroll.' + event_ie6, function () {
-						$overlay.css({width: $window.width(), height: $window.height(), top: $window.scrollTop(), left: $window.scrollLeft()});
-					}).trigger('scroll.' + event_ie6);
-				}
-				
-				trigger(event_open, settings.onOpen);
-				
-				$current.add($prev).add($next).add($slideshow).add($title).hide();
-				
-				$close.html(settings.close).show();
-			}
-			
-			publicMethod.load(true);
-		}
-	}
-
-	// ****************
-	// PUBLIC FUNCTIONS
-	// Usage format: $.fn.colorbox.close();
-	// Usage from within an iframe: parent.$.fn.colorbox.close();
-	// ****************
-	
-	publicMethod = $.fn[colorbox] = $[colorbox] = function (options, callback) {
-		var $this = this, autoOpen;
-		
-		if (!$this[0] && $this.selector) { // if a selector was given and it didn't match any elements, go ahead and exit.
-			return $this;
-		}
-		
-		options = options || {};
-		
-		if (callback) {
-			options.onComplete = callback;
-		}
-		
-		if (!$this[0] || $this.selector === undefined) { // detects $.colorbox() and $.fn.colorbox()
-			$this = $('<a/>');
-			options.open = true; // assume an immediate open
-		}
-		
-		$this.each(function () {
-			$.data(this, colorbox, $.extend({}, $.data(this, colorbox) || defaults, options));
-			$(this).addClass(boxElement);
-		});
-		
-		autoOpen = options.open;
-		
-		if ($.isFunction(autoOpen)) {
-			autoOpen = autoOpen.call($this);
-		}
-		
-		if (autoOpen) {
-			launch($this[0]);
-		}
-		
-		return $this;
-	};
-
-	// Initialize ColorBox: store common calculations, preload the interface graphics, append the html.
-	// This preps colorbox for a speedy open when clicked, and lightens the burdon on the browser by only
-	// having to run once, instead of each time colorbox is opened.
-	publicMethod.init = function () {
-		// Create & Append jQuery Objects
-		$window = $(window);
-		$box = $div().attr({id: colorbox, 'class': isIE ? prefix + 'IE' : ''});
-		$overlay = $div("Overlay", isIE6 ? 'position:absolute' : '').hide();
-		
-		$wrap = $div("Wrapper");
-		$content = $div("Content").append(
-			$loaded = $div("LoadedContent", 'width:0; height:0; overflow:hidden'),
-			$loadingOverlay = $div("LoadingOverlay").add($div("LoadingGraphic")),
-			$title = $div("Title"),
-			$current = $div("Current"),
-			$next = $div("Next"),
-			$prev = $div("Previous"),
-			$slideshow = $div("Slideshow").bind(event_open, slideshow),
-			$close = $div("Close")
-		);
-		$wrap.append( // The 3x3 Grid that makes up ColorBox
-			$div().append(
-				$div("TopLeft"),
-				$topBorder = $div("TopCenter"),
-				$div("TopRight")
-			),
-			$div(false, 'clear:left').append(
-				$leftBorder = $div("MiddleLeft"),
-				$content,
-				$rightBorder = $div("MiddleRight")
-			),
-			$div(false, 'clear:left').append(
-				$div("BottomLeft"),
-				$bottomBorder = $div("BottomCenter"),
-				$div("BottomRight")
-			)
-		).children().children().css({'float': 'left'});
-		
-		$loadingBay = $div(false, 'position:absolute; width:9999px; visibility:hidden; display:none');
-		
-		$('body').prepend($overlay, $box.append($wrap, $loadingBay));
-		
-		$content.children()
-		.hover(function () {
-			$(this).addClass('hover');
-		}, function () {
-			$(this).removeClass('hover');
-		}).addClass('hover');
-		
-		// Cache values needed for size calculations
-		interfaceHeight = $topBorder.height() + $bottomBorder.height() + $content.outerHeight(true) - $content.height();//Subtraction needed for IE6
-		interfaceWidth = $leftBorder.width() + $rightBorder.width() + $content.outerWidth(true) - $content.width();
-		loadedHeight = $loaded.outerHeight(true);
-		loadedWidth = $loaded.outerWidth(true);
-		
-		// Setting padding to remove the need to do size conversions during the animation step.
-		$box.css({"padding-bottom": interfaceHeight, "padding-right": interfaceWidth}).hide();
-		
-		// Setup button events.
-		$next.click(publicMethod.next);
-		$prev.click(publicMethod.prev);
-		$close.click(publicMethod.close);
-		
-		// Adding the 'hover' class allowed the browser to load the hover-state
-		// background graphics.  The class can now can be removed.
-		$content.children().removeClass('hover');
-		
-		$('.' + boxElement).live('click', function (e) {
-			// checks to see if it was a non-left mouse-click and for clicks modified with ctrl, shift, or alt.
-			if (!((e.button !== 0 && typeof e.button !== 'undefined') || e.ctrlKey || e.shiftKey || e.altKey)) {
-				e.preventDefault();
-				launch(this);
-			}
-		});
-		
-		$overlay.click(function () {
-			if (settings.overlayClose) {
-				publicMethod.close();
-			}
-		});
-		
-		// Set Navigation Key Bindings
-		$(document).bind("keydown", function (e) {
-			if (open && settings.escKey && e.keyCode === 27) {
-				e.preventDefault();
-				publicMethod.close();
-			}
-			if (open && settings.arrowKey && !active && $related[1]) {
-				if (e.keyCode === 37 && (index || settings.loop)) {
-					e.preventDefault();
-					$prev.click();
-				} else if (e.keyCode === 39 && (index < $related.length - 1 || settings.loop)) {
-					e.preventDefault();
-					$next.click();
-				}
-			}
-		});
-	};
-	
-	publicMethod.remove = function () {
-		$box.add($overlay).remove();
-		$('.' + boxElement).die('click').removeData(colorbox).removeClass(boxElement);
-	};
-
-	publicMethod.position = function (speed, loadedCallback) {
-		var
-		animate_speed,
-		// keeps the top and left positions within the browser's viewport.
-		posTop = Math.max(document.documentElement.clientHeight - settings.h - loadedHeight - interfaceHeight, 0) / 2 + $window.scrollTop(),
-		posLeft = Math.max($window.width() - settings.w - loadedWidth - interfaceWidth, 0) / 2 + $window.scrollLeft();
-		
-		// setting the speed to 0 to reduce the delay between same-sized content.
-		animate_speed = ($box.width() === settings.w + loadedWidth && $box.height() === settings.h + loadedHeight) ? 0 : speed;
-		
-		// this gives the wrapper plenty of breathing room so it's floated contents can move around smoothly,
-		// but it has to be shrank down around the size of div#colorbox when it's done.  If not,
-		// it can invoke an obscure IE bug when using iframes.
-		$wrap[0].style.width = $wrap[0].style.height = "9999px";
-		
-		function modalDimensions(that) {
-			// loading overlay height has to be explicitly set for IE6.
-			$topBorder[0].style.width = $bottomBorder[0].style.width = $content[0].style.width = that.style.width;
-			$loadingOverlay[0].style.height = $loadingOverlay[1].style.height = $content[0].style.height = $leftBorder[0].style.height = $rightBorder[0].style.height = that.style.height;
-		}
-		
-		$box.dequeue().animate({width: settings.w + loadedWidth, height: settings.h + loadedHeight, top: posTop, left: posLeft}, {
-			duration: animate_speed,
-			complete: function () {
-				modalDimensions(this);
-				
-				active = false;
-				
-				// shrink the wrapper down to exactly the size of colorbox to avoid a bug in IE's iframe implementation.
-				$wrap[0].style.width = (settings.w + loadedWidth + interfaceWidth) + "px";
-				$wrap[0].style.height = (settings.h + loadedHeight + interfaceHeight) + "px";
-				
-				if (loadedCallback) {
-					loadedCallback();
-				}
-			},
-			step: function () {
-				modalDimensions(this);
-			}
-		});
-	};
-
-	publicMethod.resize = function (options) {
-		if (open) {
-			options = options || {};
-			
-			if (options.width) {
-				settings.w = setSize(options.width, 'x') - loadedWidth - interfaceWidth;
-			}
-			if (options.innerWidth) {
-				settings.w = setSize(options.innerWidth, 'x');
-			}
-			$loaded.css({width: settings.w});
-			
-			if (options.height) {
-				settings.h = setSize(options.height, 'y') - loadedHeight - interfaceHeight;
-			}
-			if (options.innerHeight) {
-				settings.h = setSize(options.innerHeight, 'y');
-			}
-			if (!options.innerHeight && !options.height) {				
-				var $child = $loaded.wrapInner("<div style='overflow:auto'></div>").children(); // temporary wrapper to get an accurate estimate of just how high the total content should be.
-				settings.h = $child.height();
-				$child.replaceWith($child.children()); // ditch the temporary wrapper div used in height calculation
-			}
-			$loaded.css({height: settings.h});
-			
-			publicMethod.position(settings.transition === "none" ? 0 : settings.speed);
-		}
-	};
-
-	publicMethod.prep = function (object) {
-		if (!open) {
-			return;
-		}
-		
-		var photo,
-		speed = settings.transition === "none" ? 0 : settings.speed;
-		
-		$window.unbind('resize.' + prefix);
-		$loaded.remove();
-		$loaded = $div('LoadedContent').html(object);
-		
-		function getWidth() {
-			settings.w = settings.w || $loaded.width();
-			settings.w = settings.mw && settings.mw < settings.w ? settings.mw : settings.w;
-			return settings.w;
-		}
-		function getHeight() {
-			settings.h = settings.h || $loaded.height();
-			settings.h = settings.mh && settings.mh < settings.h ? settings.mh : settings.h;
-			return settings.h;
-		}
-		
-		$loaded.hide()
-		.appendTo($loadingBay.show())// content has to be appended to the DOM for accurate size calculations.
-		.css({width: getWidth(), overflow: settings.scrolling ? 'auto' : 'hidden'})
-		.css({height: getHeight()})// sets the height independently from the width in case the new width influences the value of height.
-		.prependTo($content);
-		
-		$loadingBay.hide();
-		
-		// floating the IMG removes the bottom line-height and fixed a problem where IE miscalculates the width of the parent element as 100% of the document width.
-		$('#' + prefix + 'Photo').css({cssFloat: 'none', marginLeft: 'auto', marginRight: 'auto'});
-		
-		// Hides SELECT elements in IE6 because they would otherwise sit on top of the overlay.
-		if (isIE6) {
-			$('select').not($box.find('select')).filter(function () {
-				return this.style.visibility !== 'hidden';
-			}).css({'visibility': 'hidden'}).one(event_cleanup, function () {
-				this.style.visibility = 'inherit';
-			});
-		}
-				
-		function setPosition(s) {
-			var prev, prevSrc, next, nextSrc, total = $related.length, loop = settings.loop;
-			publicMethod.position(s, function () {
-				function defilter() {
-					if (isIE) {
-						//IE adds a filter when ColorBox fades in and out that can cause problems if the loaded content contains transparent pngs.
-						$box[0].style.removeAttribute("filter"); 
-					}
-				}
-				
-				if (!open) {
-					return;
-				}
-				
-				if (isIE) {
-					//This fadeIn helps the bicubic resampling to kick-in.
-					if (photo) {
-						$loaded.fadeIn(100);
-					}
-				}
-				
-				$loaded.show();
-				
-				trigger(event_loaded);
-				
-				$title.show().html(settings.title);
-				
-				if (total > 1) { // handle grouping
-					if (typeof settings.current === "string") {
-						$current.html(settings.current.replace(/\{current\}/, index + 1).replace(/\{total\}/, total)).show();
-					}
-					
-					$next[(loop || index < total - 1) ? "show" : "hide"]().html(settings.next);
-					$prev[(loop || index) ? "show" : "hide"]().html(settings.previous);
-					
-					prev = index ? $related[index - 1] : $related[total - 1];
-					next = index < total - 1 ? $related[index + 1] : $related[0];
-					
-					if (settings.slideshow) {
-						$slideshow.show();
-					}
-					
-					// Preloads images within a rel group
-					if (settings.preloading) {
-						nextSrc = $.data(next, colorbox).href || next.href;
-						prevSrc = $.data(prev, colorbox).href || prev.href;
-						
-						nextSrc = $.isFunction(nextSrc) ? nextSrc.call(next) : nextSrc;
-						prevSrc = $.isFunction(prevSrc) ? prevSrc.call(prev) : prevSrc;
-						
-						if (isImage(nextSrc)) {
-							$('<img/>')[0].src = nextSrc;
 						}
-						
-						if (isImage(prevSrc)) {
-							$('<img/>')[0].src = prevSrc;
+						else {
+							te = '(' + ch + ' || ' + bch + ') / 2 - (this.offsetHeight / 2) + (t = ' + st + ' ? ' + st + ' : ' + bst + ') + "px"';
+							le = '(' + cw + ' || ' + bcw + ') / 2 - (this.offsetWidth / 2) + (t = ' + sl + ' ? ' + sl + ' : ' + bsl + ') + "px"';
 						}
+						s.removeExpression('top');
+						s.removeExpression('left');
+						s.setExpression('top', te);
+						s.setExpression('left', le);
 					}
 				}
-				
-				$loadingOverlay.hide();
-				
-				if (settings.transition === 'fade') {
-					$box.fadeTo(speed, 1, function () {
-						defilter();
-					});
-				} else {
-					defilter();
-				}
-				
-				$window.bind('resize.' + prefix, function () {
-					publicMethod.position(0);
-				});
-				
-				trigger(event_complete, settings.onComplete);
 			});
-		}
-		
-		if (settings.transition === 'fade') {
-			$box.fadeTo(speed, 0, function () {
-				setPosition(0);
-			});
-		} else {
-			setPosition(speed);
-		}
-	};
+		},
+		/*
+		 * Place focus on the first or last visible input
+		 */
+		focus: function (pos) {
+			var s = this, p = pos && $.inArray(pos, ['first', 'last']) !== -1 ? pos : 'first';
 
-	publicMethod.load = function (launched) {
-		var href, img, setResize, prep = publicMethod.prep;
-		
-		active = true;
-		element = $related[index];
-		
-		if (!launched) {
-			settings = process($.extend({}, $.data(element, colorbox)));
-		}
-		
-		trigger(event_purge);
-		
-		trigger(event_load, settings.onLoad);
-		
-		settings.h = settings.height ?
-				setSize(settings.height, 'y') - loadedHeight - interfaceHeight :
-				settings.innerHeight && setSize(settings.innerHeight, 'y');
-		
-		settings.w = settings.width ?
-				setSize(settings.width, 'x') - loadedWidth - interfaceWidth :
-				settings.innerWidth && setSize(settings.innerWidth, 'x');
-		
-		// Sets the minimum dimensions for use in image scaling
-		settings.mw = settings.w;
-		settings.mh = settings.h;
-		
-		// Re-evaluate the minimum width and height based on maxWidth and maxHeight values.
-		// If the width or height exceed the maxWidth or maxHeight, use the maximum values instead.
-		if (settings.maxWidth) {
-			settings.mw = setSize(settings.maxWidth, 'x') - loadedWidth - interfaceWidth;
-			settings.mw = settings.w && settings.w < settings.mw ? settings.w : settings.mw;
-		}
-		if (settings.maxHeight) {
-			settings.mh = setSize(settings.maxHeight, 'y') - loadedHeight - interfaceHeight;
-			settings.mh = settings.h && settings.h < settings.mh ? settings.h : settings.mh;
-		}
-		
-		href = settings.href;
-		
-		$loadingOverlay.show();
+			// focus on dialog or the first visible/enabled input element
+			var input = $(':input:enabled:visible:' + p, s.d.wrap);
+			setTimeout(function () {
+				input.length > 0 ? input.focus() : s.d.wrap.focus();
+			}, 10);
+		},
+		getDimensions: function () {
+			var el = $(window);
 
-		if (settings.inline) {
-			// Inserts an empty placeholder where inline content is being pulled from.
-			// An event is bound to put inline content back when ColorBox closes or loads new content.
-			$div().hide().insertBefore($(href)[0]).one(event_purge, function () {
-				$(this).replaceWith($loaded.children());
-			});
-			prep($(href));
-		} else if (settings.iframe) {
-			// IFrame element won't be added to the DOM until it is ready to be displayed,
-			// to avoid problems with DOM-ready JS that might be trying to run in that iframe.
-			$box.one(event_loaded, function () {
-				var iframe = $("<iframe frameborder='0' style='width:100%; height:100%; border:0; display:block'/>")[0];
-				iframe.name = prefix + (+new Date());
-				iframe.src = settings.href;
-				
-				if (!settings.scrolling) {
-					iframe.scrolling = "no";
+			// fix a jQuery/Opera bug with determining the window height
+			var h = $.browser.opera && $.browser.version > '9.5' && $.fn.jquery < '1.3'
+						|| $.browser.opera && $.browser.version < '9.5' && $.fn.jquery > '1.2.6'
+				? el[0].innerHeight : el.height();
+
+			return [h, el.width()];
+		},
+		getVal: function (v, d) {
+			return v ? (typeof v === 'number' ? v
+					: v === 'auto' ? 0
+					: v.indexOf('%') > 0 ? ((parseInt(v.replace(/%/, '')) / 100) * (d === 'h' ? w[0] : w[1]))
+					: parseInt(v.replace(/px/, '')))
+				: null;
+		},
+		/*
+		 * Update the container. Set new dimensions, if provided.
+		 * Focus, if enabled. Re-bind events.
+		 */
+		update: function (height, width) {
+			var s = this;
+
+			// prevent update if dialog does not exist
+			if (!s.d.data) {
+				return false;
+			}
+
+			// reset orig values
+			s.d.origHeight = s.getVal(height, 'h');
+			s.d.origWidth = s.getVal(width, 'w');
+
+			// hide data to prevent screen flicker
+			s.d.data.hide();
+			height && s.d.container.css('height', height);
+			width && s.d.container.css('width', width);
+			s.setContainerDimensions();
+			s.d.data.show();
+			s.o.focus && s.focus();
+
+			// rebind events
+			s.unbindEvents();
+			s.bindEvents();
+		},
+		setContainerDimensions: function () {
+			var s = this,
+				badIE = ie6 || ie7;
+
+			// get the dimensions for the container and data
+			var ch = s.d.origHeight ? s.d.origHeight : $.browser.opera ? s.d.container.height() : s.getVal(badIE ? s.d.container[0].currentStyle['height'] : s.d.container.css('height'), 'h'),
+				cw = s.d.origWidth ? s.d.origWidth : $.browser.opera ? s.d.container.width() : s.getVal(badIE ? s.d.container[0].currentStyle['width'] : s.d.container.css('width'), 'w'),
+				dh = s.d.data.outerHeight(true), dw = s.d.data.outerWidth(true);
+
+			s.d.origHeight = s.d.origHeight || ch;
+			s.d.origWidth = s.d.origWidth || cw;
+
+			// mxoh = max option height, mxow = max option width
+			var mxoh = s.o.maxHeight ? s.getVal(s.o.maxHeight, 'h') : null,
+				mxow = s.o.maxWidth ? s.getVal(s.o.maxWidth, 'w') : null,
+				mh = mxoh && mxoh < w[0] ? mxoh : w[0],
+				mw = mxow && mxow < w[1] ? mxow : w[1];
+
+			// moh = min option height
+			var moh = s.o.minHeight ? s.getVal(s.o.minHeight, 'h') : 'auto';
+			if (!ch) {
+				if (!dh) {ch = moh;}
+				else {
+					if (dh > mh) {ch = mh;}
+					else if (s.o.minHeight && moh !== 'auto' && dh < moh) {ch = moh;}
+					else {ch = dh;}
 				}
-				
-				if (isIE) {
-					iframe.allowtransparency = "true";
+			}
+			else {
+				ch = s.o.autoResize && ch > mh ? mh : ch < moh ? moh : ch;
+			}
+
+			// mow = min option width
+			var mow = s.o.minWidth ? s.getVal(s.o.minWidth, 'w') : 'auto';
+			if (!cw) {
+				if (!dw) {cw = mow;}
+				else {
+					if (dw > mw) {cw = mw;}
+					else if (s.o.minWidth && mow !== 'auto' && dw < mow) {cw = mow;}
+					else {cw = dw;}
 				}
-				
-				$(iframe).appendTo($loaded).one(event_purge, function () {
-					iframe.src = "//about:blank";
-				});
-			});
-			
-			prep(" ");
-		} else if (settings.html) {
-			prep(settings.html);
-		} else if (isImage(href)) {
-			img = new Image();
-			img.onload = function () {
-				var percent;
-				img.onload = null;
-				img.id = prefix + 'Photo';
-				$(img).css({border: 'none', display: 'block', cssFloat: 'left'});
-				if (settings.scalePhotos) {
-					setResize = function () {
-						img.height -= img.height * percent;
-						img.width -= img.width * percent;	
-					};
-					if (settings.mw && img.width > settings.mw) {
-						percent = (img.width - settings.mw) / img.width;
-						setResize();
+			}
+			else {
+				cw = s.o.autoResize && cw > mw ? mw : cw < mow ? mow : cw;
+			}
+
+			s.d.container.css({height: ch, width: cw});
+			s.d.wrap.css({overflow: (dh > ch || dw > cw) ? 'auto' : 'visible'});
+			s.o.autoPosition && s.setPosition();
+		},
+		setPosition: function () {
+			var s = this, top, left,
+				hc = (w[0]/2) - (s.d.container.outerHeight(true)/2),
+				vc = (w[1]/2) - (s.d.container.outerWidth(true)/2);
+
+			if (s.o.position && Object.prototype.toString.call(s.o.position) === '[object Array]') {
+				top = s.o.position[0] || hc;
+				left = s.o.position[1] || vc;
+			} else {
+				top = hc;
+				left = vc;
+			}
+			s.d.container.css({left: left, top: top});
+		},
+		watchTab: function (e) {
+			var s = this;
+
+			if ($(e.target).parents('.simplemodal-container').length > 0) {
+				// save the list of inputs
+				s.inputs = $(':input:enabled:visible:first, :input:enabled:visible:last', s.d.data[0]);
+
+				// if it's the first or last tabbable element, refocus
+				if ((!e.shiftKey && e.target === s.inputs[s.inputs.length -1]) ||
+						(e.shiftKey && e.target === s.inputs[0]) ||
+						s.inputs.length === 0) {
+					e.preventDefault();
+					var pos = e.shiftKey ? 'last' : 'first';
+					s.focus(pos);
+				}
+			}
+			else {
+				// might be necessary when custom onShow callback is used
+				e.preventDefault();
+				s.focus();
+			}
+		},
+		/*
+		 * Open the modal dialog elements
+		 * - Note: If you use the onOpen callback, you must "show" the
+		 *	        overlay and container elements manually
+		 *         (the iframe will be handled by SimpleModal)
+		 */
+		open: function () {
+			var s = this;
+			// display the iframe
+			s.d.iframe && s.d.iframe.show();
+
+			if ($.isFunction(s.o.onOpen)) {
+				// execute the onOpen callback
+				s.o.onOpen.apply(s, [s.d]);
+			}
+			else {
+				// display the remaining elements
+				s.d.overlay.show();
+				s.d.container.show();
+				s.d.data.show();
+			}
+
+			s.o.focus && s.focus();
+
+			// bind default events
+			s.bindEvents();
+		},
+		/*
+		 * Close the modal dialog
+		 * - Note: If you use an onClose callback, you must remove the
+		 *         overlay, container and iframe elements manually
+		 *
+		 * @param {boolean} external Indicates whether the call to this
+		 *     function was internal or external. If it was external, the
+		 *     onClose callback will be ignored
+		 */
+		close: function () {
+			var s = this;
+
+			// prevent close when dialog does not exist
+			if (!s.d.data) {
+				return false;
+			}
+
+			// remove the default events
+			s.unbindEvents();
+
+			if ($.isFunction(s.o.onClose) && !s.occb) {
+				// set the onClose callback flag
+				s.occb = true;
+
+				// execute the onClose callback
+				s.o.onClose.apply(s, [s.d]);
+			}
+			else {
+				// if the data came from the DOM, put it back
+				if (s.d.placeholder) {
+					var ph = $('#simplemodal-placeholder');
+					// save changes to the data?
+					if (s.o.persist) {
+						// insert the (possibly) modified data back into the DOM
+						ph.replaceWith(s.d.data.removeClass('simplemodal-data').css('display', s.display));
 					}
-					if (settings.mh && img.height > settings.mh) {
-						percent = (img.height - settings.mh) / img.height;
-						setResize();
+					else {
+						// remove the current and insert the original,
+						// unmodified data back into the DOM
+						s.d.data.hide().remove();
+						ph.replaceWith(s.d.orig);
 					}
 				}
-				
-				if (settings.h) {
-					img.style.marginTop = Math.max(settings.h - img.height, 0) / 2 + 'px';
+				else {
+					// otherwise, remove it
+					s.d.data.hide().remove();
 				}
-				
-				if ($related[1] && (index < $related.length - 1 || settings.loop)) {
-					$(img).css({cursor: 'pointer'}).click(publicMethod.next);
-				}
-				
-				if (isIE) {
-					img.style.msInterpolationMode = 'bicubic';
-				}
-				
-				setTimeout(function () { // Chrome will sometimes report a 0 by 0 size if there isn't pause in execution
-					prep(img);
-				}, 1);
-			};
-			
-			setTimeout(function () { // Opera 10.6+ will sometimes load the src before the onload function is set
-				img.src = href;
-			}, 1);	
-		} else if (href) {
-			$loadingBay.load(href, function (data, status, xhr) {
-				prep(status === 'error' ? 'Request unsuccessful: ' + xhr.statusText : $(this).children());
-			});
+
+				// remove the remaining elements
+				s.d.container.hide().remove();
+				s.d.overlay.hide();
+				s.d.iframe && s.d.iframe.hide().remove();
+				setTimeout(function(){
+					// opera work-around
+					s.d.overlay.remove();
+
+					// reset the dialog object
+					s.d = {};
+				}, 10);
+			}
 		}
 	};
-
-	// Navigates to the next page/image in a set.
-	publicMethod.next = function () {
-		if (!active) {
-			index = index < $related.length - 1 ? index + 1 : 0;
-			publicMethod.load();
-		}
-	};
-	
-	publicMethod.prev = function () {
-		if (!active) {
-			index = index ? index - 1 : $related.length - 1;
-			publicMethod.load();
-		}
-	};
-
-	// Note: to use this within an iframe use the following format: parent.$.fn.colorbox.close();
-	publicMethod.close = function () {
-		if (open && !closing) {
-			closing = true;
-			
-			open = false;
-			
-			trigger(event_cleanup, settings.onCleanup);
-			
-			$window.unbind('.' + prefix + ' .' + event_ie6);
-			
-			$overlay.fadeTo('fast', 0);
-			
-			$box.stop().fadeTo('fast', 0, function () {
-				
-				trigger(event_purge);
-				
-				$loaded.remove();
-				
-				$box.add($overlay).css({'opacity': 1, cursor: 'auto'}).hide();
-				
-				setTimeout(function () {
-					closing = false;
-					trigger(event_closed, settings.onClosed);
-				}, 1);
-			});
-		}
-	};
-
-	// A method for fetching the current element ColorBox is referencing.
-	// returns a jQuery object.
-	publicMethod.element = function () {
-		return $(element);
-	};
-
-	publicMethod.settings = defaults;
-
-	// Initializes ColorBox when the DOM has loaded
-	$(publicMethod.init);
-
-}(jQuery, this));/*!
+})(jQuery);
+/*!
  * jQuery TextChange Plugin
  * http://www.zurb.com/playground/jquery-text-change-custom-event
  *
@@ -4584,7 +4495,814 @@ if (!String.prototype.trim) {
  */
  (function(a){a.event.special.textchange={setup:function(){a(this).data("lastValue",this.contentEditable==="true"?a(this).html():a(this).val());a(this).bind("keyup.textchange",a.event.special.textchange.handler);a(this).bind("cut.textchange paste.textchange input.textchange",a.event.special.textchange.delayedHandler)},teardown:function(){a(this).unbind(".textchange")},handler:function(){a.event.special.textchange.triggerIfChanged(a(this))},delayedHandler:function(){var b=a(this);setTimeout(function(){a.event.special.textchange.triggerIfChanged(b)},
  25)},triggerIfChanged:function(b){var c=b[0].contentEditable==="true"?b.html():b.val();if(c!==b.data("lastValue")){b.trigger("textchange",b.data("lastValue"));b.data("lastValue",c)}}};a.event.special.hastext={setup:function(){a(this).bind("textchange",a.event.special.hastext.handler)},teardown:function(){a(this).unbind("textchange",a.event.special.hastext.handler)},handler:function(b,c){c===""&&c!==a(this).val()&&a(this).trigger("hastext")}};a.event.special.notext={setup:function(){a(this).bind("textchange",
- a.event.special.notext.handler)},teardown:function(){a(this).unbind("textchange",a.event.special.notext.handler)},handler:function(b,c){a(this).val()===""&&a(this).val()!==c&&a(this).trigger("notext")}}})(jQuery);;(function($){
+ a.event.special.notext.handler)},teardown:function(){a(this).unbind("textchange",a.event.special.notext.handler)},handler:function(b,c){a(this).val()===""&&a(this).val()!==c&&a(this).trigger("notext")}}})(jQuery);/*
+ * jQuery Plugin: Tokenizing Autocomplete Text Entry
+ * Version 1.1
+ *
+ * Copyright (c) 2009 James Smith (http://loopj.com)
+ * Licensed jointly under the GPL and MIT licenses,
+ * choose which one suits your project best!
+ *
+ * TH - 2010-08-23 - Added ability to have arbitary tags that don't require a match from the list.
+ * Added requiresMatch options to support this. Defaults to original Tokenizing Autocomplete functionality.
+ * Also added focusHint so it doesn't always show hint when focusing the input. Again, defaults to orignal functionality.
+ */
+
+(function($) {
+
+$.fn.tokenInput = function (url, options) {
+	if (!options) options = {};
+	var settings = $.extend({
+		url: $.isFunction(url) ? url : function(query){
+			// N.B. options.url overrides this, so should not be used
+			var queryStringDelimiter = url.indexOf("?") < 0 ? "?" : "&"
+			return url + queryStringDelimiter + settings.queryParam + "=" + query;
+		},
+		hintText: "Type in a search term",
+		noResultsText: "No results",
+		searchingText: "Searching...",
+		searchDelay: 300,
+		minChars: 1,
+		tokenLimit: null,
+		jsonContainer: null,
+		method: "GET",
+		contentType: "json",
+		queryParam: "q",
+		onResult: null,
+		focusHint: true,		//Added TH - determines if drop-down hint should be shown on input focus.
+		requireMatch: true,		//Added TH - determines if a user should be able to add new tags or must match a selection.
+		animateDropdown: true,
+		suggestedTagsText: "Suggested tags:",
+		defaultSuggestTagSize: 14,
+		defaultSuggestTagSizeUnit: 'px',
+		afterAdd: function() {},
+		useClientSideSearch: false
+	}, options);
+
+	settings.classes = $.extend({
+		tokenList: "token-input-list",
+		token: "token-input-token",
+		label: "token-input-label",
+		tokenDelete: "token-input-delete-token",
+		selectedToken: "token-input-selected-token",
+		highlightedToken: "token-input-highlighted-token",
+		dropdown: "token-input-dropdown",
+		dropdownItem: "token-input-dropdown-item",
+		dropdownItem2: "token-input-dropdown-item2",
+		selectedDropdownItem: "token-input-selected-dropdown-item",
+		inputToken: "token-input-input-token",
+		suggestedTags: "token-input-suggested-tags",
+		suggestedTag: "token-input-suggested-tag"
+	}, options.classes);
+
+	return this.each(function () {
+		var list = new $.TokenList(this, settings);
+	});
+};
+
+$.TokenList = function (input, settings) {
+	//
+	// Variables
+	//
+
+	// Input box position "enum"
+	var POSITION = {
+		BEFORE: 0,
+		AFTER: 1,
+		END: 2
+	};
+
+	// Keys "enum"
+	var KEY = {
+		BACKSPACE: 8,
+		TAB: 9,
+		RETURN: 13,
+		ESC: 27,
+		LEFT: 37,
+		UP: 38,
+		RIGHT: 39,
+		DOWN: 40,
+		COMMA: 188
+	};
+
+	// Save the tokens
+	var saved_tokens = [];
+
+	// Keep track of the number of tokens in the list
+	var token_count = 0;
+
+	// Basic cache to save on db hits
+	var cache = new $.TokenList.Cache();
+
+	// Keep track of the timeout
+	var timeout;
+
+	var client_side_data;
+
+	// Create a new text input an attach keyup events
+	var input_box = $("<input autocomplete=\"off\" type=\"text\">")
+		.attr('id', $(input).attr('id')+'Dynamic')
+		.attr('name', $(input).attr('id')+'Dynamic')
+		.css({
+			outline: "none"
+		})
+		.focus(function () {
+			if (settings.focusHint && (settings.tokenLimit == null || settings.tokenLimit != token_count)) {
+				show_dropdown_hint();
+			}
+			if (settings.useClientSideSearch && !client_side_data) {
+				client_side_data = [];
+				$[settings.method.toLowerCase()](settings.url(), {}, prepare_client_side_data, settings.contentType);
+			}
+		})
+		.blur(function () {
+			hide_dropdown();
+		})
+		.keydown(function (event) {
+			var previous_token;
+			var next_token;
+
+			switch(event.keyCode) {
+				case KEY.LEFT:
+				case KEY.RIGHT:
+				case KEY.UP:
+				case KEY.DOWN:
+					if(!$(this).val()) {
+						previous_token = input_token.prev();
+						next_token = input_token.next();
+
+						if((previous_token.length && previous_token.get(0) === selected_token) || (next_token.length && next_token.get(0) === selected_token)) {
+							// Check if there is a previous/next token and it is selected
+							if(event.keyCode == KEY.LEFT || event.keyCode == KEY.UP) {
+								deselect_token($(selected_token), POSITION.BEFORE);
+							} else {
+								deselect_token($(selected_token), POSITION.AFTER);
+							}
+						} else if((event.keyCode == KEY.LEFT || event.keyCode == KEY.UP) && previous_token.length) {
+							// We are moving left, select the previous token if it exists
+							select_token($(previous_token.get(0)));
+						} else if((event.keyCode == KEY.RIGHT || event.keyCode == KEY.DOWN) && next_token.length) {
+							// We are moving right, select the next token if it exists
+							select_token($(next_token.get(0)));
+						}
+					} else {
+						var dropdown_item = null;
+
+						if(!selected_dropdown_item) {
+							dropdown_item = $('li:first', dropdown);
+						} else {
+							if(event.keyCode == KEY.DOWN || event.keyCode == KEY.RIGHT) {
+								dropdown_item = $(selected_dropdown_item).next();
+							} else {
+								dropdown_item = $(selected_dropdown_item).prev();
+							}
+						}
+
+
+						if(dropdown_item.length) {
+							select_dropdown_item(dropdown_item);
+						}
+						return false;
+					}
+					break;
+
+				case KEY.BACKSPACE:
+					previous_token = input_token.prev();
+
+					if(!$(this).val().length) {
+						if(selected_token) {
+							delete_token($(selected_token));
+						} else if(previous_token.length) {
+							select_token($(previous_token.get(0)));
+						}
+
+						return false;
+					} else if($(this).val().length == 1) {
+						hide_dropdown();
+					} else {
+						// set a timeout just long enough to let this function finish.
+						setTimeout(function(){do_search(false);}, 5);
+					}
+					break;
+
+				case KEY.TAB:
+				case KEY.RETURN:
+				case KEY.COMMA:
+
+					// Submit form if user hits return a second time
+					if(event.keyCode == KEY.RETURN && $(this).val() == "") {
+						parentForm[0].submit();
+						return false;
+					}
+
+					if(selected_dropdown_item) {
+						add_existing_token($(selected_dropdown_item));
+					} else if(!settings.requireMatch) {
+						add_new_token($(this).val());
+					}
+
+					return false;
+					break;
+
+				case KEY.ESC:
+					hide_dropdown();
+					return true;
+
+				default:
+					if(is_printable_character(event.keyCode)) {
+						// set a timeout just long enough to let this function finish.
+						setTimeout(function(){do_search(false);}, 5);
+					}
+					break;
+			}
+		});
+
+	// Keep a reference to the original input box
+	var hidden_input = $(input)
+						.hide()
+						.focus(function () {
+							input_box.focus();
+						})
+						.blur(function () {
+							input_box.blur();
+						});
+
+	// Keep a reference to the parent form
+	// Collect the stray arbitrary tags before the parent form submits
+	var parentForm = hidden_input.parents('form')
+						.submit(function(){
+							if(!settings.requireMatch && input_box.val()!=$('label[for=' + input_box.attr('id') + ']').text()) {
+								add_new_token(input_box.val());
+							}
+						});
+
+	// Keep a reference to the selected token and dropdown item
+	var selected_token = null;
+	var selected_dropdown_item = null;
+
+	// The list to store the token items in
+	var token_list = $("<ul />")
+		.addClass(settings.classes.tokenList)
+		.insertAfter(hidden_input)
+		.click(function (event) {
+			var li = get_element_from_event(event, "li");
+			if(li && li.get(0) != input_token.get(0)) {
+				toggle_select_token(li);
+				return false;
+			} else {
+				input_box.focus();
+
+				if(selected_token) {
+					deselect_token($(selected_token), POSITION.END);
+				}
+			}
+		})
+		.mouseover(function (event) {
+			var li = get_element_from_event(event, "li");
+			if(li && selected_token !== this) {
+				li.addClass(settings.classes.highlightedToken);
+			}
+		})
+		.mouseout(function (event) {
+			var li = get_element_from_event(event, "li");
+			if(li && selected_token !== this) {
+				li.removeClass(settings.classes.highlightedToken);
+			}
+		})
+		.mousedown(function (event) {
+			// Stop user selecting text on tokens
+			var li = get_element_from_event(event, "li");
+			if(li){
+				return false;
+			}
+		});
+
+
+	// The list to store the dropdown items in
+	var dropdown = $("<div>")
+		.addClass(settings.classes.dropdown)
+		.insertAfter(token_list)
+		.hide();
+
+	// The token holding the input box
+	var input_token = $("<li />")
+		.addClass(settings.classes.inputToken)
+		.appendTo(token_list)
+		.append(input_box);
+
+	init_list(hidden_input);
+
+	// No longer need this element in the DOM
+	hidden_input.detach();
+
+	suggestedTags = settings.suggestedTags;
+	if(suggestedTags && suggestedTags.length) {
+
+		var suggested_tags_container = $('<div />')
+			.addClass(settings.classes.suggestedTags)
+			.insertAfter(dropdown);
+
+		var suggested_tags_label = $('<p />')
+			.appendTo(suggested_tags_container)
+			.text(settings.suggestedTagsText);
+
+		var suggested_tags = $("<ul />")
+			.appendTo(suggested_tags_container);
+
+
+		init_suggestedTags();
+
+	}
+
+	//
+	// Functions
+	//
+
+
+	// Pre-populate list if items exist
+	function init_list (token_element) {
+
+		li_data = settings.prePopulate;
+
+		//TH - If prepopulate was passed in as true and not an array of tags, just build the array from existing field value.
+		//This could do with being improved because it just uses the value as both the name and the id.
+		if(li_data && !li_data.length) {
+
+			//convert tag string into tag array that the tokenizer can consume
+			var rawTags = $(token_element).val().split(',');
+			//[{"id":"856","name":"House"},]
+			var tags = [];
+			for(var i=0, len = rawTags.length; i < len; i++) {
+				var tag = rawTags[i];
+				if (tag.length) tags[i] = {id: tag, name: tag};
+			}
+			//clear the text
+			$(token_element).attr('value', '');
+			li_data = tags;
+		}
+
+		if(li_data && li_data.length) {
+			for(var i in li_data) {
+			if (li_data.hasOwnProperty(i)) {
+				var this_token = $("<li><em class=\"" + settings.classes.label + "\">"+li_data[i].name+"</em> </li>")
+					.addClass(settings.classes.token)
+					.insertBefore(input_token);
+
+				$("<span>x</span>")
+					.addClass(settings.classes.tokenDelete)
+					.appendTo(this_token.find('em'))
+					.click(function () {
+						delete_token($(this).parents('li'));
+						return false;
+					});
+
+				$.data(this_token.get(0), "tokeninput", {"id": li_data[i].id, "name": li_data[i].name});
+
+				// Clear input box and make sure it keeps focus
+				input_box
+					.val("")
+					.focus();
+
+				// Don't show the help dropdown, they've got the idea
+				hide_dropdown();
+
+				// Save this token id
+				add_hidden_element(li_data[i].id);
+			}
+			}
+		}
+	}
+
+	/**
+	 * TH - Adds suggested tags cloud
+	 */
+	function init_suggestedTags() {
+
+		li_data = settings.suggestedTags;
+		if(li_data && li_data.length) {
+
+			for(var i in li_data) {
+
+				suggestedTag = li_data[i].name;
+				if($('li p', token_list).filter(":contains('" + suggestedTag + "')").length==0) {
+
+					/*size adjust will increase/decrease tag size*/
+					var sizeAdjust = 0;
+					if(typeof(li_data[i].size) != 'undefined') {
+						sizeAdjust = li_data[i].size;
+					}
+
+					var this_token = $('<li><a href="#" style="font-size: ' + (settings.defaultSuggestTagSize+sizeAdjust) + settings.defaultSuggestTagSizeUnit + '">'+suggestedTag+'</a></li>')
+					.addClass(settings.classes.suggestedTag)
+					.appendTo(suggested_tags)
+					.click(function() {
+
+						var li = this;
+						add_new_token($('a', li).text());
+						$(li).remove();
+
+						//Should the whole ul be removed?
+						if($('li',suggested_tags).length==0) {
+							$(suggested_tags_container).remove();
+						}
+						return false;
+
+					});;
+
+				}
+
+			}
+
+			if($('li',suggested_tags).length==0) {
+				$(suggested_tags_container).remove();
+			}
+		 }
+
+	}
+
+	function is_printable_character(keycode) {
+		if((keycode >= 48 && keycode <= 90) ||		// 0-1a-z
+			(keycode >= 96 && keycode <= 111) ||		// numpad 0-9 + - / * .
+			(keycode >= 186 && keycode <= 192) ||	// ; = , - . / ^
+			(keycode >= 219 && keycode <= 222)		// ( \ ) '
+		) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	// Get an element of a particular type from an event (click/mouseover etc)
+	function get_element_from_event (event, element_type) {
+		var target = $(event.target);
+		var element = null;
+
+		if(target.is(element_type)) {
+			element = target;
+		} else if(target.parent(element_type).length) {
+			element = target.parent(element_type+":first");
+		}
+
+		return element;
+	}
+
+	// Inner function to a token to the list
+	function insert_token(id, value) {
+		var this_token = $("<li><em class=\"" + settings.classes.label + "\">"+ value +"</em> </li>")
+			.addClass(settings.classes.token)
+			.insertBefore(input_token);
+
+		//TH - added to prevent search getting triggered unnecessarily.
+		clearTimeout(timeout);
+
+		// The 'delete token' button
+		$("<span>x</span>")
+			.addClass(settings.classes.tokenDelete)
+			.appendTo(this_token.find('em'))
+			.click(function () {
+				delete_token($(this).parents('li'));
+				return false;
+			});
+
+		$.data(this_token.get(0), "tokeninput", {"id": id, "name": value});
+
+		settings.afterAdd.call(this);
+
+		return this_token;
+	}
+
+	function add_hidden_element(value) {
+		$(parentForm).append($('<input>').attr({
+			type:	'hidden',
+			name:	$(hidden_input).attr('name') + '[]',
+			value:	value
+		}));
+	}
+	//.replace('[', '\[').replace(']', '\]')
+	function remove_hidden_element(value) {
+		$('input[type=hidden][name="' + $(hidden_input).attr('name') + '[]"][value="' + value + '"]', parentForm).remove();
+	}
+
+	// Add a token to the token list based on user input
+	function add_existing_token (item) {
+
+		var li_data = $.data(item.get(0), "tokeninput");
+		var this_token = insert_token(li_data.id, li_data.name);
+
+		// Clear input box and make sure it keeps focus
+		input_box
+			.val("")
+			.focus();
+
+		// Don't show the help dropdown, they've got the idea
+		hide_dropdown();
+
+		// Save this token id
+		add_hidden_element(li_data.id);
+
+		token_count++;
+
+		if(settings.tokenLimit != null && settings.tokenLimit >= token_count) {
+			input_box.hide();
+			hide_dropdown();
+		}
+	}
+
+	//Added TH - This is for adding a token that doesn't exist in the list. Could do with drying this up because it's very similar to add_existing_token.
+	function add_new_token (label) {
+
+		if($.trim(label) == '') {
+			return false;
+		}
+
+		var this_token = insert_token(label, label);
+
+		// Clear input box and make sure it keeps focus
+		input_box
+			.val("")
+			.focus();
+
+		// Don't show the help dropdown, they've got the idea
+		hide_dropdown();
+
+		// Save this token id
+		add_hidden_element(id_string);
+
+		token_count++;
+
+		if(settings.tokenLimit != null && settings.tokenLimit >= token_count) {
+			input_box.hide();
+			hide_dropdown();
+		}
+
+	}
+
+	// Select a token in the token list
+	function select_token (token) {
+		token.addClass(settings.classes.selectedToken);
+		selected_token = token.get(0);
+
+		// Hide input box
+		input_box.val("");
+
+		// Hide dropdown if it is visible (eg if we clicked to select token)
+		hide_dropdown();
+	}
+
+	// Deselect a token in the token list
+	function deselect_token (token, position) {
+		token.removeClass(settings.classes.selectedToken);
+		selected_token = null;
+
+		if(position == POSITION.BEFORE) {
+			input_token.insertBefore(token);
+		} else if(position == POSITION.AFTER) {
+			input_token.insertAfter(token);
+		} else {
+			input_token.appendTo(token_list);
+		}
+
+		// Show the input box and give it focus again
+		input_box.focus();
+	}
+
+	// Toggle selection of a token in the token list
+	function toggle_select_token (token) {
+		if(selected_token == token.get(0)) {
+			deselect_token(token, POSITION.END);
+		} else {
+			if(selected_token) {
+				deselect_token($(selected_token), POSITION.END);
+			}
+			select_token(token);
+		}
+	}
+
+	// Delete a token from the token list
+	function delete_token (token) {
+		// Remove the id from the saved list
+		var token_data = $.data(token.get(0), "tokeninput");
+
+		// Delete the token
+		token.remove();
+		selected_token = null;
+
+		// Show the input box and give it focus again
+		input_box.focus();
+
+		remove_hidden_element(token_data.id);
+
+		token_count--;
+
+		if (settings.tokenLimit != null) {
+			input_box
+				.show()
+				.val("")
+				.focus();
+		}
+	}
+
+	// Hide and clear the results dropdown
+	function hide_dropdown () {
+		dropdown.hide().empty();
+		selected_dropdown_item = null;
+	}
+
+	function show_dropdown_searching () {
+		hide_dropdown();
+		dropdown
+			.html("<p>"+settings.searchingText+"</p>")
+			.show();
+	}
+
+	function show_dropdown_hint () {
+		dropdown
+			.html("<p>"+settings.hintText+"</p>")
+			.show();
+	}
+
+	// Highlight the query part of the search term
+	function highlight_term(value, term) {
+		return value.replace(new RegExp("(?![^&;]+;)(?!<[^<>]*)(" + term + ")(?![^<>]*>)(?![^&;]+;)", "gi"), "<b>$1</b>");
+	}
+
+	// Populate the results dropdown with some results
+	function populate_dropdown (query, results) {
+		if(results.length) {
+			dropdown.empty();
+			var dropdown_ul = $("<ul>")
+				.appendTo(dropdown)
+				.mouseover(function (event) {
+					select_dropdown_item(get_element_from_event(event, "li"));
+				})
+				.mousedown(function (event) {
+					add_existing_token(get_element_from_event(event, "li"));
+					return false;
+				})
+				.hide();
+
+			for(var i in results) {
+				if (results.hasOwnProperty(i)) {
+					var this_li = $("<li>"+highlight_term(results[i].name, query)+"</li>")
+									.appendTo(dropdown_ul);
+
+					if(i%2) {
+						this_li.addClass(settings.classes.dropdownItem);
+					} else {
+						this_li.addClass(settings.classes.dropdownItem2);
+					}
+
+					if(settings.requireMatch && i == 0) {
+						select_dropdown_item(this_li);
+					}
+
+					$.data(this_li.get(0), "tokeninput", {"id": results[i].id, "name": results[i].name});
+				}
+			}
+
+			dropdown.show();
+			if (settings.animateDropdown)
+				dropdown_ul.slideDown("fast");
+			else
+				dropdown_ul.show();
+
+		} else {
+			hide_dropdown();
+			if (settings.noResultsText)
+				dropdown.html("<p>"+settings.noResultsText+"</p>").show();
+		}
+	}
+
+	// Highlight an item in the results dropdown
+	function select_dropdown_item (item) {
+		if(item) {
+			if(selected_dropdown_item) {
+				deselect_dropdown_item($(selected_dropdown_item));
+			}
+
+			item.addClass(settings.classes.selectedDropdownItem);
+			selected_dropdown_item = item.get(0);
+		}
+	}
+
+	// Remove highlighting from an item in the results dropdown
+	function deselect_dropdown_item (item) {
+		item.removeClass(settings.classes.selectedDropdownItem);
+		selected_dropdown_item = null;
+	}
+
+	// Do a search and show the "searching" dropdown if the input is longer
+	// than settings.minChars
+	function do_search(immediate) {
+		var query = input_box.val().toLowerCase();
+
+		if (query && query.length) {
+			if(selected_token) {
+				deselect_token($(selected_token), POSITION.AFTER);
+			}
+
+			if (query.length >= settings.minChars) {
+				if (settings.searchingText)
+					show_dropdown_searching();
+				if (immediate) {
+					run_search(query);
+				} else {
+					clearTimeout(timeout);
+					timeout = setTimeout(function(){run_search(query);}, settings.searchDelay);
+				}
+			} else {
+				hide_dropdown();
+			}
+		}
+	}
+
+	// Do the actual search
+	function run_search(query) {
+
+		if(query=='') {
+			hide_dropdown();
+			return false;
+		}
+
+		var cached_results = cache.get(query);
+		if(cached_results) {
+			populate_dropdown(query, cached_results);
+		} else {
+			var callback = function(results) {
+				if($.isFunction(settings.onResult)) {
+					results = settings.onResult.call(this, results);
+				}
+				cache.add(query, settings.jsonContainer ? results[settings.jsonContainer] : results);
+				populate_dropdown(query, settings.jsonContainer ? results[settings.jsonContainer] : results);
+
+				//TH - added to make sure we don't show results if there was no query. This can happen due to a race condition inserting tockens.
+				if($.trim(input_box.val()) == '') {
+					hide_dropdown();
+				}
+			};
+
+			if(settings.useClientSideSearch) {
+				callback(search_client_side_data(query));
+			} else {
+				$[settings.method.toLowerCase()](settings.url(query), {}, callback, settings.contentType);
+			}
+		}
+	}
+
+	function prepare_client_side_data(results) {
+		client_side_data = [];
+		$.each(results, function(i,res){
+			res.searchable_string = (res.name + "--" + res.id).toLowerCase();
+			client_side_data.push(res);
+		});
+	}
+
+	function search_client_side_data(query) {
+		var lowerQuery = query.toLowerCase();
+		var results = [];
+		$.each(client_side_data, function(i,data) {
+			if(data.searchable_string.indexOf(query) != -1) {
+				results.push(data);
+			}
+		});
+		return results;
+	}
+};
+
+
+// Really basic cache for the results
+$.TokenList.Cache = function (options) {
+	var settings = $.extend({
+		max_size: 50
+	}, options);
+
+	var data = {};
+	var size = 0;
+
+	var flush = function () {
+		data = {};
+		size = 0;
+	};
+
+	this.add = function (query, results) {
+		if(size > settings.max_size) {
+			flush();
+		}
+
+		if(!data[query]) {
+			size++;
+		}
+
+		data[query] = results;
+	};
+
+	this.get = function (query) {
+		return data[query];
+	};
+};
+
+})(jQuery);
+;(function($){
 	$.fn.serializeObject = function(options){
 		options = $.extend({
 			filterEmpty: false
