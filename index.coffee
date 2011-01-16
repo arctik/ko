@@ -87,6 +87,7 @@ getUserLevel = (user) ->
 for k, v of settings.security.roots
 	v.salt = nonce()
 	v.password = encryptPassword v.password, v.salt
+console.log 'ADMIN ACCS', settings.security.roots
 
 model.User = Model 'User', Store('User'),
 	get: (id) ->
