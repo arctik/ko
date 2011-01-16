@@ -87,12 +87,11 @@ getUserLevel = (user) ->
 for k, v of settings.security.roots
 	v.salt = nonce()
 	v.password = encryptPassword v.password, v.salt
-console.log 'ADMIN ACCS', settings.security.roots
 
 model.User = Model 'User', Store('User'),
 	get: (id) ->
 		return null unless id
-		settings.security.roots[id] or @__proto__.get id
+		settings.security.roots[id] and U.clone(settings.security.roots[id]) or @__proto__.get id
 	add: (data) ->
 		data ?= {}
 		console.log 'SIGNUP', data
