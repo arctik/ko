@@ -140,23 +140,23 @@ model.User = Model 'User', Store('User'),
 			if not user
 				if data.user
 					# invalid user
-					#console.log 'BAD'
+					console.log 'BAD'
 					context.save null
 					false
 				else
 					# log out
-					#console.log 'LOGOUT'
+					console.log 'LOGOUT'
 					context.save null
 					true
 			else
 				if not user.password or not user.active
 					# not been activated
-					#console.log 'INACTIVE'
+					console.log 'INACTIVE'
 					context.save null
 					false
 				else if user.password is encryptPassword data.pass, user.salt
 					# log in
-					#console.log 'LOGIN'
+					console.log 'LOGIN'
 					session =
 						id: nonce()
 						uid: user.id

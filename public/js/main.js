@@ -25,6 +25,32 @@ window.RQL = RQL;
 
 // improve _
 _.mixin({
+	coerce: function(instance, type){
+		var date, t;
+		t = type;
+		if (t === 'string') {
+			instance = instance != null ? ''+instance : '';
+		} else if (t === 'number' || t === 'integer') {
+			if (!_.isNaN(instance)) {
+				instance = +instance;
+				if (t === 'integer') {
+					instance = Math.floor(instance);
+				}
+			}
+		} else if (t === 'boolean') {
+			instance = instance === 'false' ? false : !!instance;
+		} else if (t === 'null') {
+			instance = null;
+		} else if (t === 'object') {} else if (t === 'array') {
+			instance = _.toArray(instance);
+		} else if (t === 'date') {
+			date = new Date(instance);
+			if (!_.isNaN(date.getTime())) {
+				instance = date;
+			}
+		}
+		return instance;
+	},
 	partial: function(templateIds, data){
 		if (!_.isArray(templateIds)) {
 			templateIds = [templateIds, 'notfound'];
@@ -171,14 +197,8 @@ var HeaderApp = Backbone.View.extend({
 	// user authorization
 	//
 	login: function(e){
-		//var action = $(form).attr('action') || location.href;
-		var view = this;
 		var data = $(e.target).serializeObject();
-		$.ajax({
-			type: 'POST',
-			url: '/login',
-			data: JSON.stringify(data),
-			contentType: 'application/json',
+		RPC('/login', data, {
 			success: function(){
 				location.href = '/';
 			},
@@ -189,12 +209,7 @@ var HeaderApp = Backbone.View.extend({
 		return false;
 	},
 	logout: function(e){
-		var view = this;
-		$.ajax({
-			type: 'POST',
-			url: '/login',
-			data: JSON.stringify({}),
-			contentType: 'application/json',
+		RPC('/login', {}, {
 			success: function(){
 				location.href = '/';
 			},
@@ -205,18 +220,13 @@ var HeaderApp = Backbone.View.extend({
 		return false;
 	},
 	signup: function(e){
-		var view = this;
 		var data = $(e.target).serializeObject();
-		$.ajax({
-			type: 'POST',
-			url: '/signup',
-			data: JSON.stringify({
+		RPC('/signup', {
 				id: data.user,
 				password: data.pass
-			}),
-			contentType: 'application/json',
-			success: function(newSession){
-				view.model.set(newSession);
+		}, {
+			success: function(){
+				location.href = '/';
 			},
 			error: function(){
 				alert('Sorry... Try once more');
@@ -419,6 +429,7 @@ var AdminApp = Backbone.View.extend({
 		'change .action-select-all': 'selectAll',
 		'change .actions': 'command',
 		//'textchange .filter': 'filter',
+		'change select.filter': 'reload',
 		'click .action-sort': 'sort',
 		'change .action-limit': 'setPageSize',
 		'click .pager a': 'gotoPage',
@@ -482,12 +493,19 @@ var AdminApp = Backbone.View.extend({
 		var filters = $(this.el).find(':input.filter');
 		filters.each(function(i, x){
 			var name = $(x).attr('name');
+			var type = $(x).attr('data-type') || 'string';
 			var val = $(x).val();
 			// remove all search conditions on 'name'
 			query.search.args = _.reject(query.search.args, function(x){return x.args[0] === name});
 			// TODO: treat val as RQL?!
-			if (val)
-				query.filter(RQL.Query().match(name, val, 'i'));
+			console.log('FILTER', name, val);
+			if (val) {
+				if (type === 'string') {
+					query.filter(RQL.Query().match(name, val, 'i'));
+				} else {
+					query.filter(RQL.Query().eq(name, _.coerce(val, type)));
+				}
+			}
 		});
 		console.log('FILTER', query, query+'');
 		// FIXME: location is bad, consider manually calling controller + saveLocation

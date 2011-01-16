@@ -213,7 +213,15 @@ Cursus est risus hendrerit et <br>
 					<th><% if (methods.update || methods.remove) { %><input type="checkbox" class="action-select-all" /><% } %></th>
 					<% _.each(props, function(prop, name){ %>
 					<th>
-						<input type="search" name="<%=name%>" class="filter"<% if (query.last[name]) { %> value="<%=query.last[name].args[1]%>"<% } %> />
+						<% if (prop.type === 'boolean') { %>
+						<select name="<%=name%>" type="search" data-type="<%=prop.type%>" class="filter">
+							<option value=""></option>
+							<option value="true"<% if (query.last[name] && query.last[name].args[1] === true) { %> selected="selected"<% } %>>Да</option>
+							<option value="false"<% if (query.last[name] && query.last[name].args[1] === false) { %> selected="selected"<% } %>>Нет</option>
+						</select>
+						<% } else { %>
+						<input type="search" name="<%=name%>" data-type="<%=prop.type%>" class="filter"<% if (query.last[name]) { %> value="<%=query.last[name].args[1]%>"<% } %> />
+						<% } %>
 					</th>
 					<% }); %>
 				</tr>

@@ -97,14 +97,13 @@ J = require 'json-schema/lib/validate'
 coerce = (instance, schema) ->
 	t = schema.type
 	if t is 'string'
-		instance = instance ? ''+instance : '';
+		instance = if instance then ''+instance else ''
 	else if t in ['number', 'integer']
 		if not U.isNaN instance
 			instance = +instance;
 			instance = Math.floor instance if t is 'integer'
 	else if t is 'boolean'
-		# N.B. shouldn't 'false' coerce to false?
-		instance = not not instance
+		instance = if instance is 'false' then false else not not instance
 	else if t is 'null'
 		instance = null
 	else if t is 'object'

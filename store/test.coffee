@@ -1,6 +1,6 @@
 #!/usr/bin/env coffee
 
-require './h'
+require '../server/h'
 Store = require('./store').Store
 
 db = new Store 'Country', {name: 'test'}
@@ -35,6 +35,7 @@ Step facet, [
 ]
 '''
 
+'''
 Step facet, [
 	() ->
 		db.remove()
@@ -51,3 +52,4 @@ Step facet, [
 		console.log 'DONE', res
 		process.exit 0
 ]
+'''
