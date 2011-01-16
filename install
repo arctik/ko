@@ -35,6 +35,7 @@ learnboost/socket.io-node:io
 Marak/Faker.js:faker
 jackmoore/colorbox:colorbox
 cs278/jquery.tokeninput:tokeninput
+pixelmatrix/uniform:uniform
 '
 
 #deps=dvv/rql/lib:rql
