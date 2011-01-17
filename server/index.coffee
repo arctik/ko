@@ -199,6 +199,7 @@ handlerFactory = (app, before, after) ->
 				# find the method handler by descending into model own properties
 				parts = path.substring(1).split '/'
 				model = U.drill session.context, parts
+				#console.log 'DRILL', model, parts
 				# bail out unless the handler is determined
 				unless model or search
 					return null if parts.length isnt 2
@@ -207,6 +208,7 @@ handlerFactory = (app, before, after) ->
 					#console.log 'PARTS', parts, model
 					return null unless model
 					search = 'id=' + parts[1]
+					#console.log 'MANGLED', search
 				# parse query
 				# N.B. sometimes we want to pass bulk parameters, say ids to DELETE
 				#   we may do it as follows: POST /Foo?in(id,$1) x-http-method-override: delete {queryParameters: [[id1,id2,...]]}

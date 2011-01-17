@@ -29,21 +29,37 @@ Facet = (model, options, expose) ->
 			method = model[name]
 		#
 		fn = method
-		# .add() honors schema, if any
+		# .add() honors "put" schema, if any
 		if name is 'add' and options.schema
+			schema = options.schema.put or options.schema 
 			fn = (document) ->
-				validation = validate document or {}, options.schema
+				validation = validate document or {}, schema
 				if not validation.valid
 					return SyntaxError JSON.stringify validation.errors
-				method.call this, document
-		# .update() honors schema, if any
+				method.call @, document
+		# .update() honors "put" schema, if any
 		else if name is 'update' and options.schema
+			schema = options.schema.put or options.schema 
 			fn = (query, changes) ->
-				console.log 'VALIDATE?', changes, options.schema
-				validation = validatePart changes or {}, options.schema
+				#console.log 'VALIDATE?', changes, schema
+				validation = validatePart changes or {}, schema
 				if not validation.valid
 					return SyntaxError JSON.stringify validation.errors
-				method.call this, query, changes
+				method.call @, query, changes
+		# .find() honors "get" schema
+		else if name in ['get', 'find'] and options.schema
+			schema = options.schema.get or options.schema 
+			fn = (query) ->
+				wait method.call(@, query), (result) ->
+					return result if result instanceof Error
+					#console.log 'DONTLETOUT?', result, schema
+					if result instanceof Array
+						result = result.map (x) ->
+							validateFilter x, schema
+							x
+					else
+						validateFilter result, schema
+						result
 		#
 		facet[name] = fn.bind model if fn
 		#facet[name] = Compose.from(model, name).bind model
@@ -57,6 +73,7 @@ PermissiveFacet = (model, options, expose...) ->
 RestrictiveFacet = (model, options, expose...) ->
 	Facet model, options, ['get', 'find'].concat(expose or [])
 
+schema = {}
 model = {}
 facets = {}
 
@@ -88,6 +105,21 @@ for k, v of settings.security.roots
 	v.salt = nonce()
 	v.password = encryptPassword v.password, v.salt
 
+schema.User = schema.Affiliate = schema.Merchant = schema.Admin =
+	properties:
+		id:
+			type: 'string'
+			pattern: '[a-zA-Z0-9_]+'
+		name:
+			type: 'string'
+		email:
+			type: 'string'
+			pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
+		regDate:
+			type: 'date'
+		active:
+			type: 'boolean'
+
 model.User = Model 'User', Store('User'),
 	get: (id) ->
 		return null unless id
@@ -110,14 +142,13 @@ model.User = Model 'User', Store('User'),
 				data.password = nonce().substring(0, 7) unless data.password
 				console.log 'PASSWORD SET TO', data.password
 				password = encryptPassword data.password, salt
-				#console.log 'HERE', salt, password
 				@__proto__.add
 					id: data.id
 					password: password
 					salt: salt
 					name: data.name
 					email: data.email
-					regDate: Date.now()
+					regDate: Date.now() # FIXME: default in schema?
 					type: data.type
 					# TODO: activation!
 					active: data.active
@@ -140,23 +171,23 @@ model.User = Model 'User', Store('User'),
 			if not user
 				if data.user
 					# invalid user
-					console.log 'BAD'
+					#console.log 'BAD'
 					context.save null
 					false
 				else
 					# log out
-					console.log 'LOGOUT'
+					#console.log 'LOGOUT'
 					context.save null
 					true
 			else
 				if not user.password or not user.active
 					# not been activated
-					console.log 'INACTIVE'
+					#console.log 'INACTIVE'
 					context.save null
 					false
 				else if user.password is encryptPassword data.pass, user.salt
 					# log in
-					console.log 'LOGIN'
+					#console.log 'LOGIN'
 					session =
 						id: nonce()
 						uid: user.id
@@ -175,14 +206,9 @@ model.User = Model 'User', Store('User'),
 		# FIXME: BADBADBAD to double schema here
 		validation = validatePart changes or {},
 			properties:
-				id:
-					type: 'string'
-					pattern: '[a-zA-Z0-9_]+'
-				name:
-					type: 'string'
-				email:
-					type: 'string'
-					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
+				id: schema.User.properties.id
+				name: schema.User.properties.name
+				email: schema.User.properties.email
 		if not validation.valid
 			return SyntaxError JSON.stringify validation.errors
 		@update "id=#{session.user.id}", changes
@@ -203,7 +229,7 @@ model.Affiliate = Compose.create model.User, {
 		data.type = 'affiliate'
 		@__proto__.add data
 	find: (query) ->
-		@__proto__.find Query(query).eq('type', 'affiliate').ne('_deleted', true).select('-password', '-salt')
+		@__proto__.find Query(query).eq('type', 'affiliate').ne('_deleted', true)
 	update: (query, changes) ->
 		# veto some changes
 		changes.type = undefined
@@ -220,7 +246,7 @@ model.Merchant = Compose.create model.User, {
 		data.type = 'merchant'
 		@__proto__.add data
 	find: (query) ->
-		@__proto__.find Query(query).eq('type', 'merchant').ne('_deleted', true).select('-password', '-salt')
+		@__proto__.find Query(query).eq('type', 'merchant').ne('_deleted', true)
 	update: (query, changes) ->
 		# veto some changes
 		changes.type = undefined
@@ -237,7 +263,7 @@ model.Admin = Compose.create model.User, {
 		data.type = 'admin'
 		@__proto__.add data
 	find: (query) ->
-		@__proto__.find Query(query).eq('type', 'admin').ne('_deleted', true).select('-password', '-salt')
+		@__proto__.find Query(query).eq('type', 'admin').ne('_deleted', true)
 	update: (query, changes) ->
 		# veto some changes
 		changes.type = undefined
@@ -371,11 +397,6 @@ model.Bar = Model 'Bar', Store('Bar'),
 FacetForGuest = Compose.create {}, {
 	find: () -> 402
 	home: (data, session) ->
-		#s = {}
-		#for k, v of session
-		#	s[k] = v?.schema?.get?._value or v?.schema?._value or {id: k, properties: {}, type: 'object'}
-		#	s[k].id ?= k
-		#s = _.keys session.context
 		s = {}
 		for k, v of session.context
 			if typeof v is 'function'
@@ -422,50 +443,11 @@ FacetForRoot = Compose.create FacetForUser, {
 					type: 'date'
 	, 'fetch'
 	Affiliate: PermissiveFacet model.Affiliate,
-		schema:
-			properties:
-				id:
-					type: 'string'
-					pattern: '[a-zA-Z0-9_]+'
-				name:
-					type: 'string'
-				email:
-					type: 'string'
-					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
-				regDate:
-					type: 'date'
-				active:
-					type: 'boolean'
+		schema: schema.Affiliate
 	Merchant: PermissiveFacet model.Merchant,
-		schema:
-			properties:
-				id:
-					type: 'string'
-					pattern: '[a-zA-Z0-9_]+'
-				name:
-					type: 'string'
-				email:
-					type: 'string'
-					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
-				regDate:
-					type: 'date'
-				active:
-					type: 'boolean'
+		schema: schema.Merchant
 	Admin: PermissiveFacet model.Admin,
-		schema:
-			properties:
-				id:
-					type: 'string'
-					pattern: '[a-zA-Z0-9_]+'
-				name:
-					type: 'string'
-				email:
-					type: 'string'
-					pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
-				regDate:
-					type: 'date'
-				active:
-					type: 'boolean'
+		schema: schema.Admin
 	Role: PermissiveFacet model.Role,
 		schema:
 			properties:
