@@ -220,39 +220,69 @@ Store = (entity) ->
 Model = (entity, store, overrides) ->
 	Compose.create store, overrides
 
-SecuredModel = (model, veto) ->
+SecuredModel = (model, options) ->
+	options ?= {}
+	options.veto ?= {}
+	options.schema ?= {}
 	Compose.create model,
 		find: Compose.around (base) ->
+			schema = options.schema.get or options.schema
 			(query) ->
 				console.log 'BEFOREFIND', arguments
 				wait base.call(@, query), (result) ->
-					result.forEach (doc) ->
-						doc = U.veto doc, veto.find if veto.find
+					result = result.map (doc) ->
+						doc = U.veto doc, options.veto.find if options.veto.find
+						#validateFilter doc, schema if schema
+						doc
 					console.log 'AFTERFIND', result
 					result
 		get: Compose.around (base) ->
+			schema = options.schema.get or options.schema
 			(id) ->
 				console.log 'BEFOREGET', arguments
 				wait base.call(@, id), (result) ->
-					result = U.veto result, veto.get if veto.get and result
+					result = U.veto result, options.veto.get if options.veto.get and result
+					#validateFilter result, schema if schema and result
 					console.log 'AFTERGET', result
 					result
-		update: Compose.around (base) ->
-			(query, changes) ->
-				console.log 'BEFOREUPDATE', arguments
-				changes = U.veto changes, veto.update if veto.update
-				base.call @, query, changes
 		add: Compose.around (base) ->
+			schema = options.schema.put or options.schema
 			(document) ->
 				console.log 'BEFOREADD', arguments
-				changes = U.veto document, veto.add if veto.add
-				base.call @, document
+				changes = U.veto document, options.veto.add if options.veto.add
+				if schema
+					validation = validate document or {}, schema
+					if not validation.valid
+						return SyntaxError JSON.stringify validation.errors
+				wait base.call(@, document), (result) ->
+					console.log 'AFTERADD', result
+					result = U.veto result, options.veto.get if options.veto.get and result
+					result
+		update: Compose.around (base) ->
+			schema = options.schema.put or options.schema
+			(query, changes) ->
+				console.log 'BEFOREUPDATE', arguments
+				changes = U.veto changes, options.veto.update if options.veto.update
+				if schema
+					validation = validatePart changes or {}, schema
+					if not validation.valid
+						return SyntaxError JSON.stringify validation.errors
+				wait base.call(@, query, changes), (result) ->
+					console.log 'AFTERUPDATE', result
+					result
+		remove: Compose.around (base) ->
+			(query) ->
+				console.log 'BEFOREREMOVE', arguments
+				wait base.call(@, query), (result) ->
+					console.log 'AFTERREMOVE', result
+					result
 
 #########################################
 
 # expose enlisted model methods, bound to the model itself
 Facet = (model, options, expose) ->
 	options ?= {}
+	wrapped = SecuredModel model, options
 	facet = {}
 	expose and expose.forEach (def) ->
 		if def instanceof Array
@@ -260,43 +290,12 @@ Facet = (model, options, expose) ->
 			method = def[0]
 		else
 			name = def
-			method = model[name]
+			method = wrapped[name]
 		#
 		fn = method
-		# .add() honors "put" schema, if any
-		if name is 'add' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (document) ->
-				validation = validate document or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, document
-		# .update() honors "put" schema, if any
-		else if name is 'update' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (query, changes) ->
-				#console.log 'VALIDATE?', changes, schema
-				validation = validatePart changes or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, query, changes
-		# .find() honors "get" schema
-		else if name in ['get', 'find'] and options.schema
-			schema = options.schema.get or options.schema 
-			fn = (query) ->
-				wait method.call(@, query), (result) ->
-					return result if result instanceof Error
-					#console.log 'DONTLETOUT?', result, schema
-					if result instanceof Array
-						result = result.map (x) ->
-							validateFilter x, schema
-							x
-					else
-						validateFilter result, schema
-						result
-		#
-		facet[name] = fn.bind model if fn
-		#facet[name] = Compose.from(model, name).bind model
+		facet[name] = fn.bind wrapped if fn
+		#facet[name] = Compose.from(wrapped, name).bind wrapped
+	# FIXME: options should also be frozen, deeeep frozen!
 	Object.freeze Compose.create options, facet
 
 # expose collection accessors plus enlisted model methods, bound to the model itself
@@ -307,60 +306,12 @@ PermissiveFacet = (model, options, expose...) ->
 RestrictiveFacet = (model, options, expose...) ->
 	Facet model, options, ['get', 'find'].concat(expose or [])
 
+#########################################
+
 module.exports =
 	Store: Store
 	Model: Model
-	SecuredModel: SecuredModel
+	#SecuredModel: SecuredModel
 	Facet: Facet
 	RestrictiveFacet: RestrictiveFacet
 	PermissiveFacet: PermissiveFacet
-
-# expose enlisted model methods, bound to the model itself
-Facet1111111111111111111111111 = (model, options, expose) ->
-	options ?= {}
-	facet = {}
-	expose and expose.forEach (def) ->
-		if def instanceof Array
-			name = def[1]
-			method = def[0]
-		else
-			name = def
-			method = model[name]
-		#
-		fn = method
-		# .add() honors "put" schema, if any
-		if name is 'add' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (document) ->
-				validation = validate document or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, document
-		# .update() honors "put" schema, if any
-		else if name is 'update' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (query, changes) ->
-				#console.log 'VALIDATE?', changes, schema
-				validation = validatePart changes or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, query, changes
-		# .find() honors "get" schema
-		else if name in ['get', 'find'] and options.schema
-			schema = options.schema.get or options.schema 
-			fn = (query) ->
-				wait method.call(@, query), (result) ->
-					return result if result instanceof Error
-					#console.log 'DONTLETOUT?', result, schema
-					if result instanceof Array
-						result = result.map (x) ->
-							validateFilter x, schema
-							x
-					else
-						validateFilter result, schema
-						result
-		#
-		facet[name] = fn.bind model if fn
-		#facet[name] = Compose.from(model, name).bind model
-	Object.freeze Compose.create options, facet
-

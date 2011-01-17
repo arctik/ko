@@ -14,7 +14,7 @@ run = require('./server').run
 
 Store = require('./store/store').Store
 Model = require('./store/store').Model
-SecuredModel = require('./store/store').SecuredModel
+#SecuredModel = require('./store/store').SecuredModel
 Facet = require('./store/store').Facet
 RestrictiveFacet = require('./store/store').RestrictiveFacet
 PermissiveFacet = require('./store/store').PermissiveFacet
@@ -63,6 +63,7 @@ schema.User = schema.Affiliate = schema.Merchant = schema.Admin =
 			pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
 		regDate:
 			type: 'date'
+			optional: true
 		active:
 			type: 'boolean'
 
@@ -316,9 +317,16 @@ model.Language = Model 'Language', Store('Language', {
 
 model.Bar = Model 'Bar', Store('Bar'), {
 }
-model.Bar = SecuredModel model.Bar,
-	get: ['id'] 
-	update: ['test'] 
+model.Bar = PermissiveFacet model.Bar, {
+	veto:
+		get: ['id']
+		find: ['v']
+		update: ['test']
+	schema:
+		properties:
+			v:
+				type: 'string'
+}
 
 ######################################
 ################### FACETS
@@ -334,6 +342,7 @@ FacetForGuest = Compose.create {}, {
 			else
 				s[k] =
 					schema: v.schema
+					# TODO: don't define unless method exposed
 					methods:
 						add: not not v.add
 						update: not not v.update
