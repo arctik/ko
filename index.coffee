@@ -63,9 +63,59 @@ schema.User = schema.Affiliate = schema.Merchant = schema.Admin =
 			pattern: /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i
 		regDate:
 			type: 'date'
-			optional: true
+			optional:
+				add: true
 		active:
 			type: 'boolean'
+
+schema.Language =
+	properties:
+		id:
+			type: 'string'
+			pattern: '[a-zA-Z0-9_]+'
+		name:
+			type: 'string'
+		localName:
+			type: 'string'
+
+schema.Course =
+	properties:
+		cur:
+			type: 'string'
+			pattern: '[A-Z]{3}'
+		value:
+			type: 'number'
+		date:
+			type: 'date'
+
+schema.Role =
+	properties:
+		name:
+			type: 'string'
+		description:
+			type: 'string'
+		rights:
+			type: 'array'
+			items:
+				type: 'object'
+				properties:
+					entity:
+						type: 'string'
+						enum: () -> U.keys model
+					access:
+						type: 'integer'
+						enum: [0, 1, 2, 3]
+schema.Group =
+	properties:
+		name:
+			type: 'string'
+		description:
+			type: 'string'
+		roles:
+			type: 'array'
+			items:
+				type: 'string'
+				enum: () -> model.Role.find
 
 model.User = Model 'User', Store('User'),
 	get: (id) ->
@@ -227,7 +277,7 @@ model.Role = Model 'Role', Store('Role'), {
 model.Group = Model 'Group', Store('Group'), {
 }
 
-model.Session = Model 'Session', Store('Session'),
+model.Session = Model 'Session', Store('Session'), {
 	# look for a saved session, attach .save() helper
 	lookup: (req, res) ->
 		sid = req.getSecureCookie 'sid'
@@ -266,6 +316,7 @@ model.Session = Model 'Session', Store('Session'),
 				#console.log 'EFFECTIVE FACET', level, context
 				Object.freeze Compose.call @session, context: context
 		]
+}
 
 ######################################
 ################### Misc
@@ -305,11 +356,8 @@ model.Course = Model 'Course', Store('Course'),
 			found = found[0] or null if Query(query).normalize().pk
 			found
 
-model.Language = Model 'Language', Store('Language', {
-	properties:
-		name: String
-		localName: String
-})
+model.Language = Model 'Language', Store('Language'), {
+}
 
 ######################################
 ################### Tests
@@ -321,6 +369,7 @@ model.Bar = PermissiveFacet model.Bar, {
 	veto:
 		get: ['id']
 		find: ['v']
+		add: ['v']
 		update: ['test']
 	schema:
 		properties:
@@ -333,7 +382,6 @@ model.Bar = PermissiveFacet model.Bar, {
 ######################################
 
 FacetForGuest = Compose.create {}, {
-	find: () -> 402
 	home: (data, session) ->
 		s = {}
 		for k, v of session.context
@@ -347,7 +395,6 @@ FacetForGuest = Compose.create {}, {
 						add: not not v.add
 						update: not not v.update
 						remove: not not v.remove
-		#s = session.context
 		user: U.veto(session.user, ['password', 'salt']), schema: s
 	login: model.User.login.bind model.User
 }
@@ -356,81 +403,36 @@ FacetForUser = Compose.create FacetForGuest, {
 	profile: model.User.profile.bind model.User
 	passwd: model.User.passwd.bind model.User
 	Course: RestrictiveFacet model.Course,
-		schema:
-			properties:
-				cur:
-					type: 'string'
-					pattern: '[A-Z]{3}'
-				value:
-					type: 'number'
-				date:
-					type: 'date'
+		schema: schema.Course
 }
 
 # root -- hardcoded DB owner
 FacetForRoot = Compose.create FacetForUser, {
-	Bar: PermissiveFacet model.Bar, null, 'foos2'
 	Course: PermissiveFacet model.Course,
-		schema:
-			properties:
-				cur:
-					type: 'string'
-					pattern: '[A-Z]{3}'
-				value:
-					type: 'number'
-				date:
-					type: 'date'
+		schema: schema.Course
 	, 'fetch'
 	Affiliate: PermissiveFacet model.Affiliate,
 		schema: schema.Affiliate
+		veto:
+			get: ['password', 'salt']
 	Merchant: PermissiveFacet model.Merchant,
 		schema: schema.Merchant
+		veto:
+			get: ['password', 'salt']
 	Admin: PermissiveFacet model.Admin,
 		schema: schema.Admin
+		veto:
+			get: ['password', 'salt']
 	Role: PermissiveFacet model.Role,
-		schema:
-			properties:
-				name:
-					type: 'string'
-				description:
-					type: 'string'
-				rights:
-					type: 'array'
-					items:
-						type: 'object'
-						properties:
-							entity:
-								type: 'string'
-								enum: U.keys model
-							access:
-								type: 'integer'
-								enum: [0, 1, 2, 3]
+		schema: schema.Role
 	Group: PermissiveFacet model.Group,
-		schema:
-			properties:
-				name:
-					type: 'string'
-				description:
-					type: 'string'
-				roles:
-					type: 'array'
-					items:
-						type: 'string'
-						enum: () -> model.Role.find
+		schema: schema.Group
 	Language: PermissiveFacet model.Language,
-		schema:
-			properties:
-				id:
-					type: 'string'
-					pattern: '[a-zA-Z0-9_]+'
-				name:
-					type: 'string'
-				localName:
-					type: 'string'
+		schema: schema.Language
 }
 
 FacetForAffiliate = Compose.create FacetForUser, {
-	Language: FacetForRoot.Language
+	Affiliate: FacetForRoot.Affiliate
 }
 
 FacetForMerchant = Compose.create FacetForUser, {
@@ -438,12 +440,12 @@ FacetForMerchant = Compose.create FacetForUser, {
 
 # admin -- powerful user
 FacetForAdmin = Compose.create FacetForUser, {
-	Course: FacetForRoot.Course
 	Affiliate: FacetForRoot.Affiliate
 	Merchant: FacetForRoot.Merchant
 	Admin: FacetForRoot.Admin
 	Role: FacetForRoot.Role
 	Group: FacetForRoot.Group
+	Course: FacetForRoot.Course
 	Language: FacetForRoot.Language
 }
 

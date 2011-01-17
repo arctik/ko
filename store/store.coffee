@@ -220,49 +220,58 @@ Store = (entity) ->
 Model = (entity, store, overrides) ->
 	Compose.create store, overrides
 
+#
+# facet.add(X) --> veto X, veto.add --> validate X, schema.add --> model.add(X) --> R := store.add(X) --> veto R, veto.get --> validate R, schema.get --> R
+#
+
 SecuredModel = (model, options) ->
 	options ?= {}
-	options.veto ?= {}
-	options.schema ?= {}
 	Compose.create model,
 		find: Compose.around (base) ->
-			schema = options.schema.get or options.schema
+			veto = options.veto?.find or options.veto?.get
+			schema = options.schema?.get or options.schema
 			(query) ->
 				console.log 'BEFOREFIND', arguments
 				wait base.call(@, query), (result) ->
-					result = result.map (doc) ->
-						doc = U.veto doc, options.veto.find if options.veto.find
-						#validateFilter doc, schema if schema
-						doc
+					if result instanceof Array
+						result = result.map (doc) ->
+							doc = U.veto doc, veto if veto
+							#validateFilter doc, schema if schema
+							doc
+					else
+						result = U.veto result, veto if veto and result
 					console.log 'AFTERFIND', result
 					result
 		get: Compose.around (base) ->
-			schema = options.schema.get or options.schema
+			veto = options.veto?.get
+			schema = options.schema?.get or options.schema
 			(id) ->
 				console.log 'BEFOREGET', arguments
 				wait base.call(@, id), (result) ->
-					result = U.veto result, options.veto.get if options.veto.get and result
+					result = U.veto result, veto if veto and result
 					#validateFilter result, schema if schema and result
 					console.log 'AFTERGET', result
 					result
 		add: Compose.around (base) ->
-			schema = options.schema.put or options.schema
+			veto = options.veto?.add or options.veto?.put
+			schema = options.schema?.add or options.schema?.put or options.schema
 			(document) ->
 				console.log 'BEFOREADD', arguments
-				changes = U.veto document, options.veto.add if options.veto.add
+				changes = U.veto document, veto if veto
 				if schema
-					validation = validate document or {}, schema
+					validation = validate document or {}, schema, flavor: 'add'
 					if not validation.valid
 						return SyntaxError JSON.stringify validation.errors
 				wait base.call(@, document), (result) ->
+					result = U.veto result, options.veto.get if options.veto?.get and result
 					console.log 'AFTERADD', result
-					result = U.veto result, options.veto.get if options.veto.get and result
 					result
 		update: Compose.around (base) ->
-			schema = options.schema.put or options.schema
+			veto = options.veto?.update or options.veto?.put
+			schema = options.schema?.update or options.schema?.put or options.schema
 			(query, changes) ->
 				console.log 'BEFOREUPDATE', arguments
-				changes = U.veto changes, options.veto.update if options.veto.update
+				changes = U.veto changes, veto if veto
 				if schema
 					validation = validatePart changes or {}, schema
 					if not validation.valid
@@ -311,7 +320,6 @@ RestrictiveFacet = (model, options, expose...) ->
 module.exports =
 	Store: Store
 	Model: Model
-	#SecuredModel: SecuredModel
 	Facet: Facet
 	RestrictiveFacet: RestrictiveFacet
 	PermissiveFacet: PermissiveFacet

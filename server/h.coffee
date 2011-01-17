@@ -50,8 +50,8 @@ U.mixin
 	veto: (obj, fields) ->
 		for k in fields
 			if typeof k is 'string'
-				#delete o[k]
-				obj[k] = undefined
+				delete obj[k] if obj
+				#obj[k] = undefined
 			else if k instanceof Array
 				k1 = k.shift()
 				v1 = obj[k1]
@@ -118,7 +118,7 @@ coerce = (instance, schema) ->
 	instance
 
 # coercively validate instance
-global.validate = (instance, schema) -> J._validate instance, schema, coerce: coerce
+global.validate = (instance, schema, options) -> J._validate instance, schema, U.extend(options or {}, coerce: coerce)
 # coercively validate only properties that do exist in instance
 global.validatePart = (instance, schema) -> J._validate instance, schema, existingOnly: true, coerce: coerce
 # deletes properties not defined in the schema

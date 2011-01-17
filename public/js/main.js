@@ -784,10 +784,10 @@ var Controller = Backbone.Controller.extend({
 			//console.log('QUERY', name, query, entity);
 			entity.fetch({
 				url: entity.url + (query ? '?' + query : ''),
-				error1: function(x, xhr, y){
-					alert('FAILED: ' + xhr.responseText);
+				error: function(x, xhr, y){
+					entity.dispose();
+					model.set({error: xhr.responseText});
 				},
-				error: entity.error,
 				success: function(data){
 					model.set({errors: []});
 					console.log('FETCHED', data);
