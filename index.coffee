@@ -11,67 +11,13 @@ fs = require 'fs'
 Compose = require 'compose'
 
 run = require('./server').run
+
 Store = require('./store/store').Store
-
-Model = (entity, store, overrides) ->
-	Compose.create store, overrides
-
-# expose enlisted model methods, bound to the model itself
-Facet = (model, options, expose) ->
-	options ?= {}
-	facet = {}
-	expose and expose.forEach (def) ->
-		if def instanceof Array
-			name = def[1]
-			method = def[0]
-		else
-			name = def
-			method = model[name]
-		#
-		fn = method
-		# .add() honors "put" schema, if any
-		if name is 'add' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (document) ->
-				validation = validate document or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, document
-		# .update() honors "put" schema, if any
-		else if name is 'update' and options.schema
-			schema = options.schema.put or options.schema 
-			fn = (query, changes) ->
-				#console.log 'VALIDATE?', changes, schema
-				validation = validatePart changes or {}, schema
-				if not validation.valid
-					return SyntaxError JSON.stringify validation.errors
-				method.call @, query, changes
-		# .find() honors "get" schema
-		else if name in ['get', 'find'] and options.schema
-			schema = options.schema.get or options.schema 
-			fn = (query) ->
-				wait method.call(@, query), (result) ->
-					return result if result instanceof Error
-					#console.log 'DONTLETOUT?', result, schema
-					if result instanceof Array
-						result = result.map (x) ->
-							validateFilter x, schema
-							x
-					else
-						validateFilter result, schema
-						result
-		#
-		facet[name] = fn.bind model if fn
-		#facet[name] = Compose.from(model, name).bind model
-	Object.freeze Compose.create options, facet
-
-# expose collection accessors plus enlisted model methods, bound to the model itself
-PermissiveFacet = (model, options, expose...) ->
-	Facet model, options, ['get', 'add', 'update', 'find', 'remove'].concat(expose or [])
-
-# expose collection getters plus enlisted model methods, bound to the model itself
-RestrictiveFacet = (model, options, expose...) ->
-	Facet model, options, ['get', 'find'].concat(expose or [])
+Model = require('./store/store').Model
+SecuredModel = require('./store/store').SecuredModel
+Facet = require('./store/store').Facet
+RestrictiveFacet = require('./store/store').RestrictiveFacet
+PermissiveFacet = require('./store/store').PermissiveFacet
 
 schema = {}
 model = {}
@@ -368,27 +314,11 @@ model.Language = Model 'Language', Store('Language', {
 ################### Tests
 ######################################
 
-model.Bar = Model 'Bar', Store('Bar'),
-	find1: (query) ->
-		console.log 'FINDINTERCEPTED!'
-		# TODO: sugar?
-		@__proto__.find (query or '') + '&a!=null'
-	find: Compose.around (base) ->
-		(query) ->
-			console.log 'BEFOREFIND', arguments
-			wait base.call(@, (query or '') + '&a!=null'), (result) ->
-				result.forEach (doc) ->
-					doc._version = 2
-					doc = Object.veto doc, ['id']
-				console.log 'AFTERFIND', result
-				result
-	#find: Compose.before (query) ->
-	#	console.log 'BEFOREFIND', arguments
-	#	[(query or '') + '&a!=null']
-	#find: Compose.after (promise) ->
-	#	console.log 'AFTERFIND', arguments
-	#	promise
-	foos1: () -> @find "foo!=null"
+model.Bar = Model 'Bar', Store('Bar'), {
+}
+model.Bar = SecuredModel model.Bar,
+	get: ['id'] 
+	update: ['test'] 
 
 ######################################
 ################### FACETS
